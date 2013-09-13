@@ -1,8 +1,9 @@
 #!/usr/bin python
 import argparse
-import urllib2
+from urllib2 import urlopen
 from xml.etree import ElementTree as ET
-import re
+from xml.dom import minidom
+from re import sub
 
 def calculate(query="2*3"):
 
@@ -14,18 +15,11 @@ def calculate_wolframalpha(query="What is my IP address?"):
 
 	appid = 'RQJA68-P6P3A5U75W'
 	url = 'http://api.wolframalpha.com/v2/query?input=%s&appid=%s' % (query, appid)
-	url = re.sub(' ', '+', url)
-	contents = urllib2.urlopen(url).read()
-	tree = ET.fromstring(contents)
-	
-	print 'WolframAlpha result:'
-	for pod in tree.iter('pod'):
-		print pod.attrib['title']
-		for elem in pod.iter('plaintext'):
-			text = elem.text
-			if text is not None:
-				text = re.sub('\n', '\n\t', text)
-				print '\t'+text
+	url = sub(' ', '+', url)
+	contents = urlopen(url).read()
+	#tree = ET.fromstring(contents)
+	domtree = minidom.parseString(contents)
+	print domtree.toprettyxml()
 
 if __name__ == '__main__':
 
