@@ -23,7 +23,7 @@ if __name__ == '__main__':
 
 	args = argparser.parse_args()
 
-	if use_wolframalpha:
+	if args.use_wolframalpha:
 		calculate_wolframalpha(args.query)
 	else:
 		calculate(args.query)
