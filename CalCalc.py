@@ -8,8 +8,8 @@ def calculate(query="2*3"):
 
 	try:
 		result = eval(query)
-		print 'Result:'
-		print result
+		print 'Result:\n'+'-'*20
+		print result+'\n'
 
 	except SyntaxError:
 		result = calculateWolframalpha(query)
@@ -36,20 +36,19 @@ def checkQueryResult(domtree):
 
 def printSuccessfulQuery(domtree):
 	
-	print 'WolframAlpha result:'
+	print 'WolframAlpha result:\n'+'-'*20
 
 	for pod in domtree.getElementsByTagName('pod'):
-		print pod.getAttribute('title')
-		for elem in pod.getElementsByTagName('plaintext'):
-			text = elem.childNodes[0].data
+		for elem in pod.getElementsByTagName('plaintext')[0].childNodes:
+			print pod.getAttribute('title')
+			text = elem.data
 			if text is not None:
 				text = text.replace('\n', '\n\t')
-				print '\t'+text
+				print '\t'+text+'\n'
 
 def printDidYouMeans(domtree):
 
-	print 'WolframAlpha had some trouble parsing your response.\
-	\nDid you mean:'
+	print 'WolframAlpha had some trouble parsing your response.\n\nDid you mean:'
 
 	didyoumeans = domtree.getElementsByTagName('didyoumeans')[0]
 
@@ -58,12 +57,23 @@ def printDidYouMeans(domtree):
 		dym_text = didyoumean.childNodes[0].data
 		print '\t%u. %s' % (i+1, dym_text)
 		new_queries.append(dym_text)
-	print '(q) Quit'
+	print '\t(q) Quit\n'
 
-	user_selection = raw_input('Select your response.')
-	if user_selection=='Q':
-		pass
+	# Get user selection, make sure it is allowed
+	allowed_inputs = [str(i) for i in range(1, len(new_queries)+1)]
+	allowed_inputs.append('q')
+	valid_input = False
+	while not valid_input:
+		user_selection = raw_input('Select your response: ').lower()
+		if user_selection in allowed_inputs:
+			valid_input = True
+		else:
+			print 'Invalid selection. Please choose from (%s)\n.' % ', '.join(allowed_inputs)
+
+	if user_selection=='q':
+		valid_input = True
 	else:
+		print '\n'
 		calculate(query=new_queries[int(user_selection)-1])
 
 if __name__ == '__main__':
