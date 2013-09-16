@@ -11,11 +11,11 @@ def calculate(query="2*3"):
 		result = eval(query)
 		print 'Result:'
 	except SyntaxError:
-		result = calculate_wolframalpha(query)
+		result = calculateWolframalpha(query)
 		print 'Result (using WolframAlpha):'
 	print result
 
-def calculate_wolframalpha(query="What is my IP address?"):
+def calculateWolframalpha(query="What is my IP address?"):
 
 	appid = 'RQJA68-P6P3A5U75W'
 	url = 'http://api.wolframalpha.com/v2/query?input=%s&appid=%s' % (query, appid)
@@ -23,7 +23,32 @@ def calculate_wolframalpha(query="What is my IP address?"):
 	contents = urlopen(url).read()
 	#tree = ET.fromstring(contents)
 	domtree = minidom.parseString(contents)
-	print domtree.toprettyxml()
+
+	success = checkQueryResult(domtree)
+	if success:
+		printSuccessfulQuery(domtree)
+	else:
+		printDidYouMeans(domtree)
+
+
+def checkQueryResult(domtree):
+
+	queryresult = domtree.getElementsByTagName('queryresult')[0]
+	success = queryresult.getAttribute('success')=='true'
+	if success:
+		didyoumeans = domtree.getElementsByTagName('didyoumeans')
+		if len(didyoumeans)>0:
+			print 'WolframAlpha had some trouble parsing your response.\
+			\nDid you mean:'
+			for didyoumean in didyoumeans:
+				pass
+	return success
+
+def printSuccessfulQuery(domtree):
+	pass
+
+def printDidYouMeans():
+	pass
 
 if __name__ == '__main__':
 
@@ -35,6 +60,6 @@ if __name__ == '__main__':
 	args = argparser.parse_args()
 
 	if args.use_wolframalpha:
-		calculate_wolframalpha(args.query)
+		calculateWolframalpha(args.query)
 	else:
 		calculate(args.query)
