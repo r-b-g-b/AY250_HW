@@ -4,26 +4,23 @@ from urllib2 import urlopen
 from urllib import quote_plus
 from xml.dom import minidom
 
-def calculate(query="2*3", use_wolframalpha=False):
+def calculate(query="2*3"):
 
-	if use_wolframalpha:
+	try:
+		result = eval(query)
+		print 'Result:\n'+'-'*20
+		print str(result)+'\n'
+
+	except:
+		print 'Python evaluator could not parse your query.'
 		result = calculateWolframalpha(query)
-
-	else:
-		try:
-			result = eval(query)
-			print 'Result:\n'+'-'*20
-			print str(result)+'\n'
-
-		except:
-			print 'Python evaluator could not parse your query.\nSending query to WolframAlpha...'
-			result = calculateWolframalpha(query)
 
 	return result
 
 
 def calculateWolframalpha(query="What is my IP address?"):
 
+	print 'Sending query to WolframAlpha...'
 	appid = 'RQJA68-P6P3A5U75W'
 	query = quote_plus(query)
 	url = 'http://api.wolframalpha.com/v2/query?input=%s&appid=%s' % (query, appid)
@@ -125,6 +122,6 @@ if __name__ == '__main__':
 	args = argparser.parse_args()
 
 	if args.use_wolframalpha:
-		calculateWolframalpha(args.query, args.use_wolframalpha)
+		calculateWolframalpha(args.query)
 	else:
 		calculate(args.query)
