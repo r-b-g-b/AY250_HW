@@ -43,7 +43,6 @@ def printSuccessfulQuery(domtree):
 		for elem in pod.getElementsByTagName('plaintext'):
 			text = elem.childNodes[0].data
 			if text is not None:
-				text = condition_text(text)
 				text = text.replace('\n', '\n\t')
 				print '\t'+text
 
@@ -59,7 +58,7 @@ def printDidYouMeans(domtree):
 		dym_text = didyoumean.childNodes[0].data
 		print '\t%u. %s' % (i+1, dym_text)
 		new_queries.append(dym_text)
-	print '(Q) Quit'
+	print '(q) Quit'
 
 	user_selection = raw_input('Select your response.')
 	if user_selection=='Q':
