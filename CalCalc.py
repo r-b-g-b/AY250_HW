@@ -45,7 +45,16 @@ def checkQueryResult(domtree):
 	return success
 
 def printSuccessfulQuery(domtree):
-	pass
+	
+	print 'WolframAlpha result:'
+
+	for pod in domtree.getElementsByTagName('pod'):
+		print pod.getAttribute('title')
+		for elem in pod.getElementsByTagName('plaintext'):
+			text = elem.childNodes[0].data
+			if text is not None:
+				text = re.sub('\n', '\n\t', text)
+				print '\t'+text
 
 def printDidYouMeans():
 	pass
