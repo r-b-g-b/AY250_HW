@@ -86,7 +86,7 @@ def printDidYouMeans(domtree):
 		pass
 	else:
 		print '\n'
-		calculate(query=new_queries[int(user_selection)-1])
+		calculateWolframalpha(query=new_queries[int(user_selection)-1])
 
 	return None
 
