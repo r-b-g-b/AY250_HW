@@ -1,27 +1,25 @@
 #!/usr/bin python
 import argparse
 from urllib2 import urlopen
-from xml.etree import ElementTree as ET
+from urllib import quote_plus
 from xml.dom import minidom
-from re import sub
 
 def calculate(query="2*3"):
 
 	try:
 		result = eval(query)
 		print 'Result:'
+		print result
+
 	except SyntaxError:
 		result = calculateWolframalpha(query)
-		print 'Result (using WolframAlpha):'
-	print result
 
 def calculateWolframalpha(query="What is my IP address?"):
 
 	appid = 'RQJA68-P6P3A5U75W'
+	query = quote_plus(query)
 	url = 'http://api.wolframalpha.com/v2/query?input=%s&appid=%s' % (query, appid)
-	url = sub(' ', '+', url)
 	contents = urlopen(url).read()
-	#tree = ET.fromstring(contents)
 	domtree = minidom.parseString(contents)
 
 	success = checkQueryResult(domtree)
@@ -34,15 +32,7 @@ def calculateWolframalpha(query="What is my IP address?"):
 def checkQueryResult(domtree):
 
 	queryresult = domtree.getElementsByTagName('queryresult')[0]
-	success = queryresult.getAttribute('success')=='true'
-	if success:
-		didyoumeans = domtree.getElementsByTagName('didyoumeans')
-		if len(didyoumeans)>0:
-			print 'WolframAlpha had some trouble parsing your response.\
-			\nDid you mean:'
-			for didyoumean in didyoumeans:
-				pass
-	return success
+	return queryresult.getAttribute('success')=='true'
 
 def printSuccessfulQuery(domtree):
 	
@@ -53,11 +43,29 @@ def printSuccessfulQuery(domtree):
 		for elem in pod.getElementsByTagName('plaintext'):
 			text = elem.childNodes[0].data
 			if text is not None:
-				text = re.sub('\n', '\n\t', text)
+				text = condition_text(text)
+				text = text.replace('\n', '\n\t')
 				print '\t'+text
 
-def printDidYouMeans():
-	pass
+def printDidYouMeans(domtree):
+
+	print 'WolframAlpha had some trouble parsing your response.\
+	\nDid you mean:'
+
+	didyoumeans = domtree.getElementsByTagName('didyoumeans')[0]
+
+	new_queries = []
+	for i, didyoumean in enumerate(didyoumeans.getElementsByTagName('didyoumean')):
+		dym_text = didyoumean.childNodes[0].data
+		print '\t%u. %s' % (i+1, dym_text)
+		new_queries.append(dym_text)
+	print '(Q) Quit'
+
+	user_selection = raw_input('Select your response.')
+	if user_selection=='Q':
+		pass
+	else:
+		calculate(query=new_queries[int(user_selection)-1])
 
 if __name__ == '__main__':
 
