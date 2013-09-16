@@ -4,11 +4,11 @@ from urllib2 import urlopen
 from urllib import quote_plus
 from xml.dom import minidom
 
-def calculate(query="2*3"):
+def calculate(query="2*3", use_wolframalpha=False):
 
 	if use_wolframalpha:
 		result = calculateWolframalpha(query)
-		
+
 	else:
 		try:
 			result = eval(query)
@@ -125,6 +125,6 @@ if __name__ == '__main__':
 	args = argparser.parse_args()
 
 	if args.use_wolframalpha:
-		calculateWolframalpha(args.query)
+		calculateWolframalpha(args.query, args.use_wolframalpha)
 	else:
 		calculate(args.query)
