@@ -6,14 +6,18 @@ from xml.dom import minidom
 
 def calculate(query="2*3"):
 
-	try:
-		result = eval(query)
-		print 'Result:\n'+'-'*20
-		print str(result)+'\n'
-
-	except:
-		print 'Python evaluator could not parse your query.\nSending query to WolframAlpha...'
+	if use_wolframalpha:
 		result = calculateWolframalpha(query)
+		
+	else:
+		try:
+			result = eval(query)
+			print 'Result:\n'+'-'*20
+			print str(result)+'\n'
+
+		except:
+			print 'Python evaluator could not parse your query.\nSending query to WolframAlpha...'
+			result = calculateWolframalpha(query)
 
 	return result
 
@@ -115,7 +119,7 @@ if __name__ == '__main__':
 
 	argparser = argparse.ArgumentParser(description='Simple statement evaluator')
 	
-	argparser.add_argument('query', help='The query you wish to evaluate')
+	argparser.add_argument('-s', action='store', dest='query', help='The query you wish to evaluate')
 	argparser.add_argument('-w', action='store_true', dest='use_wolframalpha', default=False, help='Force program to evaluate using WolframAlpha')
 
 	args = argparser.parse_args()
