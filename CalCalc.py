@@ -11,8 +11,12 @@ def calculate(query="2*3"):
 		print 'Result:\n'+'-'*20
 		print str(result)+'\n'
 
-	except SyntaxError:
+	except:
+		print 'Python evaluator could not parse your query.\nSending query to WolframAlpha...'
 		result = calculateWolframalpha(query)
+
+	return result
+
 
 def calculateWolframalpha(query="What is my IP address?"):
 
@@ -24,9 +28,11 @@ def calculateWolframalpha(query="What is my IP address?"):
 
 	success = checkQueryResult(domtree)
 	if success:
-		printSuccessfulQuery(domtree)
+		result = printSuccessfulQuery(domtree)
 	else:
-		printDidYouMeans(domtree)
+		result = printDidYouMeans(domtree)
+
+	return result
 
 
 def checkQueryResult(domtree):
@@ -45,6 +51,8 @@ def printSuccessfulQuery(domtree):
 			if text is not None:
 				text = text.replace('\n', '\n\t')
 				print '\t'+text+'\n'
+
+	return domtree
 
 def printDidYouMeans(domtree):
 
@@ -75,6 +83,33 @@ def printDidYouMeans(domtree):
 	else:
 		print '\n'
 		calculate(query=new_queries[int(user_selection)-1])
+
+	return None
+
+def test_math():
+	query = '2**4.-16'
+	result = calculate(query)
+	assert result<0.0001
+
+def test_string():
+	query = "'ham'+'burger'"
+	result = calculate(query)
+	assert result=='hamburger'
+
+def test_list():
+	query = "[1, 2, 3, 4]"
+	result = calculate(query)
+	assert len(result)==4
+
+def test_dict():
+	query = "{'mamasemamasa': 'mamacoosa'}"
+	result = calculate(query)
+	assert result['mamasemamasa']=='mamacoosa'
+
+def test_wolfram():
+	query = 'What is the capitol of France?'
+	result = calculate(query)
+	assert result.__module__=='xml.dom.minidom'
 
 if __name__ == '__main__':
 
