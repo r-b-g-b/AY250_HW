@@ -9,7 +9,7 @@ def calculate(query="2*3"):
 	try:
 		result = eval(query)
 		print 'Result:\n'+'-'*20
-		print result+'\n'
+		print str(result)+'\n'
 
 	except SyntaxError:
 		result = calculateWolframalpha(query)
@@ -71,7 +71,7 @@ def printDidYouMeans(domtree):
 			print 'Invalid selection. Please choose from (%s)\n.' % ', '.join(allowed_inputs)
 
 	if user_selection=='q':
-		valid_input = True
+		pass
 	else:
 		print '\n'
 		calculate(query=new_queries[int(user_selection)-1])
