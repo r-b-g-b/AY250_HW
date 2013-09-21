@@ -1,7 +1,10 @@
+# import matplotlib
+# matplotlib.use('qt4agg')
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from matplotlib.patches import Rectangle
+
 
 class rectSelector(object):
 	
@@ -23,23 +26,22 @@ class rectSelector(object):
 			self.on_release(event)
 
 	def on_press(self, event):
-		
-		if len(self.fig.axes[0].patches)>0:
-			print 'press and patch was already there'
+
+		if hasattr(self, 'rect'):
 			self.rect.remove()
+			del self.rect
 			self.feats['lim1'] = [-np.inf, +np.inf]
 			self.feats['lim2'] = [-np.inf, +np.inf]
 			self.filterData()
-			plt.draw()
-
+			plt.show()
 
 		(feat1, feat2) = [feat for ax, feat in ax2feat.iteritems() if ax==event.inaxes][0]
 		
 		self.feats = {'feat1': feat1, 'feat2': feat2,
 					'lim1': [event.xdata]*2, 'lim2':[event.ydata]*2}
 
-		self.initializeRect(event.xdata, event.ydata)
-
+		self.rect = Rectangle([event.xdata, event.ydata], 0., 0., alpha=0.3)
+		
 		event.inaxes.add_patch(self.rect)
 
 		self.cid_move = self.fig.canvas.mpl_connect('motion_notify_event', self.on_move)
@@ -63,9 +65,6 @@ class rectSelector(object):
 		self.filterData()
 		
 		plt.show()
-		
-	def initializeRect(self, x, y):
-		self.rect = Rectangle([x, y], 0., 0., alpha=0.3)})
 
 	def filterData(self):
 
@@ -114,6 +113,5 @@ if __name__=='__main__':
 				axs[j, i].set_xticklabels('')
 
 	plt.show()
-
 
 	rectSelector(fig, df)
