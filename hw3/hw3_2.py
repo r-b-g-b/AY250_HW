@@ -26,7 +26,7 @@ class rectSelector(object):
 		
 		if len(self.fig.axes[0].patches)>0:
 			print 'press and patch was already there'
-			self.rect['patch'].remove()
+			self.rect.remove()
 			self.feats['lim1'] = [-np.inf, +np.inf]
 			self.feats['lim2'] = [-np.inf, +np.inf]
 			self.filterData()
@@ -40,7 +40,7 @@ class rectSelector(object):
 
 		self.initializeRect(event.xdata, event.ydata)
 
-		event.inaxes.add_patch(self.rect['patch'])
+		event.inaxes.add_patch(self.rect)
 
 		self.cid_move = self.fig.canvas.mpl_connect('motion_notify_event', self.on_move)
 
@@ -49,17 +49,15 @@ class rectSelector(object):
 
 	def on_move(self, event):
 
-		self.rect['w'] = event.xdata - self.rect['x']
-		self.rect['h'] = event.ydata - self.rect['y']
-		self.rect['patch'].set_width(self.rect['w'])
-		self.rect['patch'].set_height(self.rect['h'])
+		self.rect.set_width(event.xdata - self.rect.get_x())
+		self.rect.set_height(event.ydata - self.rect.get_y())
 
-		self.feats['lim1'] = [self.rect['x'], event.xdata]
-		if event.xdata<self.rect['x']:
+		self.feats['lim1'] = [self.rect.get_x(), event.xdata]
+		if event.xdata<self.rect.get_x():
 			self.feats['lim1'] = self.feats['lim1'][::-1]
 
-		self.feats['lim2'] = [self.rect['y'], event.ydata]
-		if event.ydata<self.rect['y']:
+		self.feats['lim2'] = [self.rect.get_y(), event.ydata]
+		if event.ydata<self.rect.get_y():
 			self.feats['lim2'] = self.feats['lim2'][::-1]
 
 		self.filterData()
@@ -67,8 +65,7 @@ class rectSelector(object):
 		plt.show()
 		
 	def initializeRect(self, x, y):
-		self.rect = {'x': x, 'y': y, 'w': 0., 'h': 0.}
-		self.rect.update({'patch': Rectangle([self.rect['x'], self.rect['y']], self.rect['w'], self.rect['h'], alpha=0.3)})
+		self.rect = Rectangle([x, y], 0., 0., alpha=0.3)})
 
 	def filterData(self):
 
@@ -86,35 +83,37 @@ class rectSelector(object):
 		for sc in scatters:
 			sc.set_color(colors)
 
+if __name__=='__main__':
 
-df = pd.read_csv('../../hw_3_data/flowers.csv')
-df.columns = [i.replace(' ', '_') for i in df.columns]
+	plt.ion()
+	df = pd.read_csv('../../hw_3_data/flowers.csv')
+	df.columns = [i.replace(' ', '_') for i in df.columns]
 
-features = list(df.columns)
-features.remove('species')
+	features = list(df.columns)
+	features.remove('species')
 
-fig, axs = plt.subplots(4, 4)
+	fig, axs = plt.subplots(4, 4)
 
-ax2feat, feat2ax = {}, {}
-colordict = {'setosa': 'y', 'versicolor': 'c', 'virginica': 'm'}
-colors = [colordict[i] for i in df['species']]
-scatters = []
-for i, feat_x in enumerate(features):
-	for j, feat_y in enumerate(features[::-1]):
-		scatters.append(axs[j][i].scatter(df[feat_x], df[feat_y], color=colors))
-		ax2feat.update({axs[j][i]: (feat_x, feat_y)})
-		feat2ax.update({(feat_x, feat_y): axs[i][j]})
+	ax2feat, feat2ax = {}, {}
+	colordict = {'setosa': 'y', 'versicolor': 'c', 'virginica': 'm'}
+	colors = [colordict[i] for i in df['species']]
+	scatters = []
+	for i, feat_x in enumerate(features):
+		for j, feat_y in enumerate(features[::-1]):
+			scatters.append(axs[j][i].scatter(df[feat_x], df[feat_y], color=colors))
+			ax2feat.update({axs[j][i]: (feat_x, feat_y)})
+			feat2ax.update({(feat_x, feat_y): axs[i][j]})
 
-[axs[0][i].set_title(feat_i) for i, feat_i in enumerate(features)]
-[axs[j][0].set_ylabel(feat_j) for j, feat_j in enumerate(features[::-1])]
-for i in range(len(features)):
-	for j in range(len(features)):
-		if i>0:
-			axs[j, i].set_yticklabels('')
-		if j<(len(features)-1):
-			axs[j, i].set_xticklabels('')
+	[axs[0][i].set_title(feat_i) for i, feat_i in enumerate(features)]
+	[axs[j][0].set_ylabel(feat_j) for j, feat_j in enumerate(features[::-1])]
+	for i in range(len(features)):
+		for j in range(len(features)):
+			if i>0:
+				axs[j, i].set_yticklabels('')
+			if j<(len(features)-1):
+				axs[j, i].set_xticklabels('')
 
-plt.show()
+	plt.show()
 
 
-rectSelector(fig, df)
+	rectSelector(fig, df)
