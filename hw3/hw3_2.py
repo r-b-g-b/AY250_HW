@@ -25,7 +25,8 @@ class rectSelector(object):
 	def on_press(self, event):
 		
 		if len(self.fig.axes[0].patches)>0:
-			del self.fig.axes[0].patches[0]
+			print 'press and patch was already there'
+			self.rect['patch'].remove()
 			self.feats['lim1'] = [-np.inf, +np.inf]
 			self.feats['lim2'] = [-np.inf, +np.inf]
 			self.filterData()
@@ -104,8 +105,15 @@ for i, feat_x in enumerate(features):
 		ax2feat.update({axs[j][i]: (feat_x, feat_y)})
 		feat2ax.update({(feat_x, feat_y): axs[i][j]})
 
-[axs[i][0].set_ylabel(feat_i) for i, feat_i in enumerate(features)]
-[axs[0][j].set_title(feat_j) for j, feat_j in enumerate(features[::-1])]
+[axs[0][i].set_title(feat_i) for i, feat_i in enumerate(features)]
+[axs[j][0].set_ylabel(feat_j) for j, feat_j in enumerate(features[::-1])]
+for i in range(len(features)):
+	for j in range(len(features)):
+		if i>0:
+			axs[j, i].set_yticklabels('')
+		if j<(len(features)-1):
+			axs[j, i].set_xticklabels('')
+
 plt.show()
 
 
