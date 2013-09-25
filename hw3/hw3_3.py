@@ -26,7 +26,6 @@ class rectSelector(object):
 	def on_press(self, event):
 
 		if self.rect is not None:
-			print 'removing rect'
 			self.rect.remove()
 		self.feats['lim1'] = [-np.inf, +np.inf]
 		self.feats['lim2'] = [-np.inf, +np.inf]
@@ -76,6 +75,8 @@ class rectSelector(object):
 
 		for sc in scatters:
 			sc.set_color(colors)
+
+		plt.show()
 
 df = pd.read_csv('hw3_3_data/flowers.csv')
 df.columns = [i.replace(' ', '_') for i in df.columns]
