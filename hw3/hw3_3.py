@@ -29,7 +29,6 @@ class rectSelector(object):
 			self.rect.remove()
 		self.feats['lim1'] = [-np.inf, +np.inf]
 		self.feats['lim2'] = [-np.inf, +np.inf]
-		# self.filterData()
 
 		(feat1, feat2) = [feat for ax, feat in ax2feat.iteritems() if ax==event.inaxes][0]
 		
@@ -47,9 +46,14 @@ class rectSelector(object):
 
 	def on_move(self, event):
 
+		if event.inaxes is None:
+			return
+
+		# resize the rectangle so the new width tracks the mouse pointer
 		self.rect.set_width(event.xdata - self.rect.get_x())
 		self.rect.set_height(event.ydata - self.rect.get_y())
 
+		# update the limits for each feature
 		self.feats['lim1'] = [self.rect.get_x(), event.xdata]
 		if event.xdata<self.rect.get_x():
 			self.feats['lim1'] = self.feats['lim1'][::-1]
@@ -78,12 +82,15 @@ class rectSelector(object):
 
 		plt.show()
 
+# load the data
 df = pd.read_csv('hw3_3_data/flowers.csv')
+# rename columns to allow for recarray-style indexing
 df.columns = [i.replace(' ', '_') for i in df.columns]
 
 features = list(df.columns)
 features.remove('species')
 
+# initialize plot
 fig, axs = plt.subplots(4, 4)
 
 ax2feat = {}
