@@ -6,7 +6,7 @@ goog = pd.read_csv('hw3_2_data/google_data.txt', sep='\t')
 temps = pd.read_csv('hw3_2_data/ny_temps.txt', sep='\t')
 yahoo = pd.read_csv('hw3_2_data/yahoo_data.txt', sep='\t')
 
-fig, ax_stocks = plt.subplots()
+fig, ax_stocks = plt.subplots(figsize=(6, 12))
 ax_temp = ax_stocks.twinx()
 
 ax_stocks.plot(goog['Modified Julian Date'].values, goog['Stock Value'].values, c='b')
