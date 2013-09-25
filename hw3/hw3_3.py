@@ -1,10 +1,7 @@
-# import matplotlib
-# matplotlib.use('qt4agg')
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from matplotlib.patches import Rectangle
-
 
 class rectSelector(object):
 	
@@ -31,11 +28,9 @@ class rectSelector(object):
 		if self.rect is not None:
 			print 'removing rect'
 			self.rect.remove()
-		# del self.rect
 		self.feats['lim1'] = [-np.inf, +np.inf]
 		self.feats['lim2'] = [-np.inf, +np.inf]
 		self.filterData()
-		# plt.show()
 
 		(feat1, feat2) = [feat for ax, feat in ax2feat.iteritems() if ax==event.inaxes][0]
 		
@@ -65,8 +60,6 @@ class rectSelector(object):
 			self.feats['lim2'] = self.feats['lim2'][::-1]
 
 		self.filterData()
-		
-		# plt.show()
 
 	def filterData(self):
 
