@@ -30,7 +30,7 @@ class rectSelector(object):
 			self.rect.remove()
 		self.feats['lim1'] = [-np.inf, +np.inf]
 		self.feats['lim2'] = [-np.inf, +np.inf]
-		self.filterData()
+		# self.filterData()
 
 		(feat1, feat2) = [feat for ax, feat in ax2feat.iteritems() if ax==event.inaxes][0]
 		
@@ -77,7 +77,7 @@ class rectSelector(object):
 		for sc in scatters:
 			sc.set_color(colors)
 
-df = pd.read_csv('../../hw_3_data/flowers.csv')
+df = pd.read_csv('hw3_3_data/flowers.csv')
 df.columns = [i.replace(' ', '_') for i in df.columns]
 
 features = list(df.columns)

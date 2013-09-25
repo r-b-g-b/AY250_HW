@@ -9,6 +9,7 @@ temps = pd.read_csv('hw3_2_data/ny_temps.txt', sep='\t')
 
 # initialize figure
 fig, ax_stocks = plt.subplots(figsize=(9, 6))
+fig.set_facecolor('w')
 ax_temp = ax_stocks.twinx()
 
 # plot to axes
