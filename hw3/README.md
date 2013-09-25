@@ -9,4 +9,4 @@ HW 3.2
 
 HW 3.3
 	run hw3_3.py
-	A plot with the iris dataset should appear. The subplots are in an NxN grid, with N being the number of measured features. You can commence brushing by drawing a rectangle on any of the subplots. Reset the view by single clicking without dragging.
+	A plot with the iris dataset should appear. The subplots are in an NxN grid, with N being the number of measured features. You can commence brushing by drawing a rectangle on any of the subplots.
