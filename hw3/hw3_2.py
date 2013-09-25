@@ -16,6 +16,7 @@ class rectSelector(object):
 		self.cid_off = fig.canvas.mpl_connect('button_release_event', self)
 		self.cid_move = None
 		self.feats = {'lim1': [-np.inf, +np.inf], 'lim2': [-np.inf, +np.inf], 'feat1': None, 'feat2': None}
+		self.rect = None
 
 	def __call__(self, event):
 
@@ -27,13 +28,14 @@ class rectSelector(object):
 
 	def on_press(self, event):
 
-		if hasattr(self, 'rect'):
+		if self.rect is not None:
+			print 'removing rect'
 			self.rect.remove()
-			del self.rect
-			self.feats['lim1'] = [-np.inf, +np.inf]
-			self.feats['lim2'] = [-np.inf, +np.inf]
-			self.filterData()
-			plt.show()
+		# del self.rect
+		self.feats['lim1'] = [-np.inf, +np.inf]
+		self.feats['lim2'] = [-np.inf, +np.inf]
+		self.filterData()
+		# plt.show()
 
 		(feat1, feat2) = [feat for ax, feat in ax2feat.iteritems() if ax==event.inaxes][0]
 		
@@ -64,7 +66,7 @@ class rectSelector(object):
 
 		self.filterData()
 		
-		plt.show()
+		# plt.show()
 
 	def filterData(self):
 
@@ -93,7 +95,7 @@ if __name__=='__main__':
 
 	fig, axs = plt.subplots(4, 4)
 
-	ax2feat, feat2ax = {}, {}
+	ax2feat = {}
 	colordict = {'setosa': 'y', 'versicolor': 'c', 'virginica': 'm'}
 	colors = [colordict[i] for i in df['species']]
 	scatters = []
@@ -101,7 +103,6 @@ if __name__=='__main__':
 		for j, feat_y in enumerate(features[::-1]):
 			scatters.append(axs[j][i].scatter(df[feat_x], df[feat_y], color=colors))
 			ax2feat.update({axs[j][i]: (feat_x, feat_y)})
-			feat2ax.update({(feat_x, feat_y): axs[i][j]})
 
 	[axs[0][i].set_title(feat_i) for i, feat_i in enumerate(features)]
 	[axs[j][0].set_ylabel(feat_j) for j, feat_j in enumerate(features[::-1])]
