@@ -84,35 +84,32 @@ class rectSelector(object):
 		for sc in scatters:
 			sc.set_color(colors)
 
-if __name__=='__main__':
+df = pd.read_csv('../../hw_3_data/flowers.csv')
+df.columns = [i.replace(' ', '_') for i in df.columns]
 
-	plt.ion()
-	df = pd.read_csv('../../hw_3_data/flowers.csv')
-	df.columns = [i.replace(' ', '_') for i in df.columns]
+features = list(df.columns)
+features.remove('species')
 
-	features = list(df.columns)
-	features.remove('species')
+fig, axs = plt.subplots(4, 4)
 
-	fig, axs = plt.subplots(4, 4)
+ax2feat = {}
+colordict = {'setosa': 'y', 'versicolor': 'c', 'virginica': 'm'}
+colors = [colordict[i] for i in df['species']]
+scatters = []
+for i, feat_x in enumerate(features):
+	for j, feat_y in enumerate(features[::-1]):
+		scatters.append(axs[j][i].scatter(df[feat_x], df[feat_y], color=colors))
+		ax2feat.update({axs[j][i]: (feat_x, feat_y)})
 
-	ax2feat = {}
-	colordict = {'setosa': 'y', 'versicolor': 'c', 'virginica': 'm'}
-	colors = [colordict[i] for i in df['species']]
-	scatters = []
-	for i, feat_x in enumerate(features):
-		for j, feat_y in enumerate(features[::-1]):
-			scatters.append(axs[j][i].scatter(df[feat_x], df[feat_y], color=colors))
-			ax2feat.update({axs[j][i]: (feat_x, feat_y)})
+[axs[0][i].set_title(feat_i) for i, feat_i in enumerate(features)]
+[axs[j][0].set_ylabel(feat_j) for j, feat_j in enumerate(features[::-1])]
+for i in range(len(features)):
+	for j in range(len(features)):
+		if i>0:
+			axs[j, i].set_yticklabels('')
+		if j<(len(features)-1):
+			axs[j, i].set_xticklabels('')
 
-	[axs[0][i].set_title(feat_i) for i, feat_i in enumerate(features)]
-	[axs[j][0].set_ylabel(feat_j) for j, feat_j in enumerate(features[::-1])]
-	for i in range(len(features)):
-		for j in range(len(features)):
-			if i>0:
-				axs[j, i].set_yticklabels('')
-			if j<(len(features)-1):
-				axs[j, i].set_xticklabels('')
+plt.show()
 
-	plt.show()
-
-	rectSelector(fig, df)
+rectSelector(fig, df)
