@@ -11,22 +11,6 @@ from sklearn.decomposition import PCA
 
 numproc = cpu_count()
 
-def calc_hog(fpaths):
-
-    hogs = []
-    
-    for fpath in fpaths:
-        category, _ = os.path.split(fpath)
-        img = imread(fpath)
-        if len(img.shape)==3:
-            img = rgb2gray(img)
-        # rescale so all feature vectors are the same length
-        img_resize = resize(img, (300, 400))
-        img_hog = hog(img_resize)
-        hogs.append(img_hog)
-
-    return hogs
-
 def map_hog(fpaths):
 
     fpaths_split = split_seq(fpaths, numproc)
@@ -54,6 +38,21 @@ def map_hog(fpaths):
     df.to_csv('hog.csv')
 
 
+def calc_hog(fpaths):
+
+    hogs = []
+    
+    for fpath in fpaths:
+        img = imread(fpath)
+        if len(img.shape)==3:
+            img = rgb2gray(img)
+        # rescale so all feature vectors are the same length
+        img_resize = resize(img, (150, 200))
+        img_hog = hog(img_resize)
+        hogs.append(img_hog)
+
+    return hogs
+
 def calc_spatial_power_ratio(fpaths):
     power_ratio = []
 
@@ -65,15 +64,12 @@ def calc_spatial_power_ratio(fpaths):
         img_resize = resize(img, (300, 400))
         IMG = np.fft.rfft2(img_resize)
 
-
-    d = dict(category=categories, fpath=fpaths, feat_hi_lo_ratio=power_ratio)
-    return pd.DataFrame(d)
+    return power_ratio
 
 def calc_rgb_corr(fpaths):
     
     corr_rg, corr_rb, corr_gb = [], [], []
     for fpath in fpaths:
-        category, _ = os.path.split(fpath)
         img = imread(fpath)
         if len(img.shape)==3:
             corr_rg.append(np.corrcoef(img[...,0].flatten(), img[...,1].flatten())[0,1])
@@ -82,8 +78,8 @@ def calc_rgb_corr(fpaths):
         elif len(img.shape)==2:
             corr_rg, corr_rb, corr_gb = 0., 0., 0.
 
-    d = dict(category=categories, fpath=fpaths, feat_corr_rg=corr_rg, feat_corr_rb=corr_rb, feat_corr_gb=corr_gb)
-    return pd.DataFrame(d)
+    corr_rgb = zip(corr_rg, corr_rb, corr_gb)
+    return corr_rgb
 
 def map_feature_calculation(func, fpaths, func_name):
     # split fpaths for multiprocessing
@@ -95,10 +91,11 @@ def map_feature_calculation(func, fpaths, func_name):
     result = p.map_async(func, fpaths_split)
     poolresult = result.get()
     
-    df = pd.concat(poolresult)
+    feature = poolresult[0]
+    for i in range(1, numproc):
+        feature.extend(poolresult[i])
     
-    # save to disk
-    df.to_csv('%s.csv' % func_name, index=False)
+    return feature
 
 def split_seq(seq, size):
     newseq = []
@@ -107,17 +104,4 @@ def split_seq(seq, size):
         newseq.append(seq[int(round(i*splitsize)):
         int(round((i+1)*splitsize))])
     return newseq
-
-
-fig, (ax1, ax2) = plt.subplots(1, 2)
-for i, fpath in enumerate(fpaths[:3000:100]):
-    imread(fpath)
-    img = rgb2gray(imread(fpath))
-    IMG = np.fft.rfft2(img)
-    ax1.imshow(img)
-    ax2.imshow(np.log(np.abs(IMG)))
-    fig.savefig('tmp_%3.3u.jpg' % i)
-    ax1.cla(); ax2.cla()
-
-
 
