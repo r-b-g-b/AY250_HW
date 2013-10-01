@@ -7,7 +7,8 @@ from skimage.io import imread
 from skimage.color import rgb2gray
 from skimage.feature import hog
 from skimage.transform import resize
-from sklearn.decomposition import PCA
+from sklearn.preprocessing import scale
+from sklearn.decomposition import RandomizedPCA
 
 numproc = cpu_count()
 
@@ -25,8 +26,14 @@ def combine_hog():
         hog_ = np.load(hogfile)['arr_0']
         hogs = np.vstack((hogs, hog_))
 
-    pca = RandomizedPCA(n_components=20)
-    hogs2 = pca.fit_transform(hogs)
+    hogs_sc = scale(hogs)
+
+    pca = RandomizedPCA(n_components=15)
+    hogs_decomp = pca.fit_transform(hogs_sc)
+
+
+
+
 
 def calc_hog(fpaths):
     '''
@@ -51,6 +58,8 @@ def calc_hog(fpaths):
         # rescale so all feature vectors are the same length
         img_resize = resize(img, (128, 128))
         img_hog = hog(img_resize)
+        
+
         hogs[i%100, :] = img_hog
 
     if i%100>0:
