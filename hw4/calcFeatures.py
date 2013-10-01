@@ -29,7 +29,11 @@ def combine_hog():
     hogs2 = pca.fit_transform(hogs)
 
 def calc_hog(fpaths):
-
+    '''
+    Compute histogram of gradients (HOG). Saves in batches to prevent memory issues.
+    Input:
+        fpaths : files on which HOG will be computed
+    '''
     olddir = os.getcwd()
     os.chdir(imgdir)
     hogs = np.empty((100, 15876))
@@ -56,6 +60,17 @@ def calc_hog(fpaths):
     return hogs
 
 def calc_spatial_power_ratio(fpaths):
+    '''
+    A set of features that attempts to represent the distributions of 
+    spatial frequencies present in the image. Calculates a 2-D FFT
+    and then creates a histogram of power in different frequencies.
+    Disregards horizontal/vertical orientation of frequency, but 
+    preserves the frequency.
+    Input:
+        fpaths : the files for which this feature is computed
+
+    Output is saved to a file
+    '''
 
     power_ratio = []
     
@@ -83,10 +98,15 @@ def calc_spatial_power_ratio(fpaths):
         power_ratio.append(distgp.values)
 
     np.savetxt('power_ratio.csv', np.array(power_ratio), delimiter=',')
-    return power_ratio
 
 def calc_rgb_corr(fpaths):
-    
+    '''
+    A simple feature of the correlation coefficient between R, G, and B channels of the image.
+    Input:
+        fpaths : file paths
+    Output
+        corr_rgb : length 3 tuple with RG, RB, and GB correlation coefficients
+    '''
     corr_rg, corr_rb, corr_gb = [], [], []
     for fpath in fpaths:
         img = imread(fpath)
@@ -124,6 +144,9 @@ def map_feature_calculation(func, fpaths, func_name):
     return feature
 
 def split_seq(seq, size):
+    '''
+    splits a sequence into roughly equal "size" equal size lists
+    '''
     newseq = []
     splitsize = 1.0/size*len(seq)
     for i in range(size):
@@ -133,6 +156,10 @@ def split_seq(seq, size):
 
 
 def get_fpaths(imgdir=imgdir):
+    '''
+    Returns the file paths for all of the images in imgdir.
+    Images should organized into category folders.
+    '''
     # get image names
     olddir = os.getcwd()
     os.chdir(imgdir)
