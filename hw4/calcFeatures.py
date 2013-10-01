@@ -17,23 +17,29 @@ imgdir = os.path.join(basedir, '50_categories')
 
 def combine_hog():
     '''
+    Load the many HOG output files into one array.
+    Compute the first 15 principal components of the original 15876-dimensional HOG array
+    Store the new features in a pandas DataFrame with 
     Combine the many HOG output files into one array and attempt to compute principal components.
     '''
 
     hogs = np.empty((0, 15876))
     hogfiles = glob(os.path.join('hog_tmp_*.npz'))
     for hogfile in hogfiles:
-        hog_ = np.load(hogfile)['arr_0']
-        hogs = np.vstack((hogs, hog_))
+        hogs = np.vstack((hogs, np.load(hogfile)['arr_0']))
 
     hogs_sc = scale(hogs)
 
-    pca = RandomizedPCA(n_components=15)
+    hog_fpaths = np.loadtxt('hog_fpaths.txt', 'S')
+    
+    n_components = 15
+    pca = RandomizedPCA(n_components=n_components)
     hogs_decomp = pca.fit_transform(hogs_sc)
 
-
-
-
+    df = pd.DataFrame(hogs_decomp, index=[os.path.split(i)[1] for i in hog_fpaths])
+    df.index.name='fpath'
+    df.columns = ['feat_hog_%2.2u' % i for i in range(1, n_components+1)]
+    df.to_csv('hog.csv')
 
 def calc_hog(fpaths):
     '''
@@ -44,9 +50,8 @@ def calc_hog(fpaths):
     olddir = os.getcwd()
     os.chdir(imgdir)
     hogs = np.empty((100, 15876))
-    
     j=0
-    for i, fpath in enumerate(fpaths):
+    for i, fpath in enumerate(fpaths[:5]):
         if i%100==0 and i>0:
             j+=1
             print '%u of %u' % (i, len(fpaths))
@@ -58,15 +63,15 @@ def calc_hog(fpaths):
         # rescale so all feature vectors are the same length
         img_resize = resize(img, (128, 128))
         img_hog = hog(img_resize)
-        
 
         hogs[i%100, :] = img_hog
 
     if i%100>0:
         np.savez('hog_tmp_%2.2u.npz'%(j+1), hogs[:(i%100+1), :])
 
+    np.savetxt('hog_fpaths.txt', fpaths, '%s')
     os.chdir(olddir)
-    return hogs
+    # return hogs
 
 def calc_spatial_power_hist(fpaths):
     '''
@@ -88,6 +93,7 @@ def calc_spatial_power_hist(fpaths):
     fft_dist_bin = pd.cut(fft_dist, bins=np.arange(0, 260, 20))
     fft_dist_bin_start = [int(i[1:].split(',')[0]) for i in fft_dist_bin]
 
+    power_hist = pd.DataFrame()
     for i, fpath in enumerate(fpaths):
         print '%u of %u: %s' % (i+1, len(fpaths), fpath)
 
@@ -101,12 +107,9 @@ def calc_spatial_power_hist(fpaths):
             img_fft=img_fft))
 
         distgp = df_.groupby('fft_dist_bin').agg({'img_fft': np.sum}).T
-        distgp.index=[fpath]
+        distgp.index=[os.path.split(fpath)[1]]
 
-        if i==0:
-            power_hist=distgp
-        else:
-            power_hist = power_hist.append(distgp)
+        power_hist = power_hist.append(distgp)
 
     power_hist.index.name='fpath'
     power_hist.columns = ['feat_power_%2.2u' % i for i in range(1, 13)]
