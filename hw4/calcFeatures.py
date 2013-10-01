@@ -15,6 +15,9 @@ basedir = '/Users/robert/Documents/Code/pythonwork/AY250/python-seminar/Homework
 imgdir = os.path.join(basedir, '50_categories')
 
 def combine_hog():
+    '''
+    Combine the many HOG output files into one array and attempt to compute principal components.
+    '''
 
     hogs = np.empty((0, 15876))
     hogfiles = glob(os.path.join(imgdir, 'hog_tmp_*.npz'))
@@ -25,51 +28,13 @@ def combine_hog():
     pca = RandomizedPCA(n_components=20)
     hogs2 = pca.fit_transform(hogs)
 
-
-
-
-def map_hog(fpaths=None):
-
-    # load image file paths
-    if fpaths is None:
-        fpaths = get_fpaths()
-
-    # split paths for parallel processing
-    fpaths_split = split_seq(fpaths, numproc)
-    
-    # initialize pool?
-    p = Pool(numproc)
-    # map jobs to processors
-    result = p.map_async(calc_hog, fpaths_split)
-    poolresult = result.get()
-
-    # concatenate results from multiple processes
-    x = np.array(poolresult[0])
-    for i in range(1, numproc):
-        x = np.vstack((x, poolresult[i]))
-
-    # PCA on huge dimensioned features to get just 20 features
-    n_components = 20
-    pca = PCA(n_components=n_components)
-    x2 = pca.fit_transform(x)
-
-    # create file name and category columns for DataFrame
-    fnames = [os.path.split(i)[1] for i in fpaths]
-    categories = [i.split('_')[0] for i in fnames]
-
-    df = pd.DataFrame(x2, columns=['feat_hog_%2.2u'%i for i in range(1, n_components+1)])
-    df['fpath'] = fnames
-    df['category'] = categories
-
-    df.to_csv('hog.csv')
-
 def calc_hog(fpaths):
 
     olddir = os.getcwd()
     os.chdir(imgdir)
     hogs = np.empty((100, 15876))
     
-    j=42
+    j=0
     for i, fpath in enumerate(fpaths):
         if i%100==0 and i>0:
             j+=1
@@ -136,6 +101,13 @@ def calc_rgb_corr(fpaths):
     return corr_rgb
 
 def map_feature_calculation(func, fpaths, func_name):
+    '''
+    General function that maps out a function over a bunch of file paths.
+    Input:
+    func : the function to be run of the file paths
+    fpaths : a list of file paths to be processed
+    func_name : str, used to name to output file
+    '''
     # split fpaths for multiprocessing
     fpaths_split = split_seq(fpaths, numproc)
     
