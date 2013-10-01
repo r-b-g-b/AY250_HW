@@ -59,7 +59,7 @@ def calc_hog(fpaths):
     os.chdir(olddir)
     return hogs
 
-def calc_spatial_power_ratio(fpaths):
+def calc_spatial_power_hist(fpaths):
     '''
     A set of features that attempts to represent the distributions of 
     spatial frequencies present in the image. Calculates a 2-D FFT
@@ -72,8 +72,6 @@ def calc_spatial_power_ratio(fpaths):
     Output is saved to a file
     '''
 
-    power_ratio = []
-    
     fft_shape = (200, 101)
     X, Y = np.meshgrid(np.arange(fft_shape[1]), np.arange(fft_shape[0]))
     fft_dist = ((X**2)+(Y**2))**0.5
@@ -90,14 +88,22 @@ def calc_spatial_power_ratio(fpaths):
         img_fft = np.abs(np.fft.rfft2(img2).flatten()[1:])
         img_fft = img_fft / img_fft.sum()
 
-        df = pd.DataFrame(dict(fft_dist_bin=fft_dist_bin_start,
+        df_ = pd.DataFrame(dict(fft_dist_bin=fft_dist_bin_start,
             img_fft=img_fft))
 
-        distgp = df.groupby('fft_dist_bin').agg({'img_fft': np.sum})
+        distgp = df_.groupby('fft_dist_bin').agg({'img_fft': np.sum}).T
+        distgp.index=[fpath]
 
-        power_ratio.append(distgp.values)
+        if i==0:
+            power_hist=distgp
+        else:
+            power_hist = power_hist.append(distgp)
 
-    np.savetxt('power_ratio.csv', np.array(power_ratio), delimiter=',')
+    power_hist.index.name='fpath'
+    power_hist.columns = ['feat_power_%2.2u' % i for i in range(1, 13)]
+    power_hist.to_csv('power_hist.csv')
+    # pd.DataFrame(dict(fpath=fpaths, power_ratio))
+    # np.savetxt('power_hist.csv', np.array(power_ratio), delimiter=',')
 
 def calc_rgb_corr(fpaths):
     '''
@@ -167,7 +173,7 @@ def get_fpaths(imgdir=imgdir):
     fpaths = []
     for catpath in catpaths:
         fpaths_ = glob(os.path.join(catpath, '*.jpg'))
-        fpaths.extend([os.path.split(i)[1] for i in fpaths_])
+        fpaths.extend(fpaths_)
         
     os.chdir(olddir)
     fpaths.sort()

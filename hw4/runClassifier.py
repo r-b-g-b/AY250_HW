@@ -24,12 +24,9 @@ if __name__=='__main__':
 
     # load previously calculated features
     corr_rgb = pd.read_csv('corr_rgb.csv', index_col=0)
-    # corr_rgb['fpath']=corr_rgb.index
-    power_ratio = pd.read_csv('power_ratio.csv', header=None)
-    power_ratio.columns = ['feat_power_%2.2u' % i for i in range(1, 13)]
-    power_ratio.index = fpaths
+    power_hist = pd.read_csv('power_hist.csv', index_col=0)
 
-    df = corr_rgb.join(power_ratio)
+    df = corr_rgb.join(power_hist)
 
     X = df.filter(regex='feat_').values
     Y = df.category.values
