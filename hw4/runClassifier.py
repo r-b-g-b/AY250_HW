@@ -12,20 +12,6 @@ from sklearn.metrics import accuracy_score
 basedir = '/Users/robert/Documents/Code/pythonwork/AY250/python-seminar/Homeworks/AY250_HW/hw4'
 imgdir = os.path.join(basedir, '50_categories')
 
-def get_fpaths(imgdir=imgdir):
-    # get image names
-    olddir = os.getcwd()
-    os.chdir(imgdir)
-    catpaths = glob(os.path.join('*'))
-    fpaths = []
-    for catpath in catpaths:
-        fpaths_ = glob(os.path.join(catpath, '*.jpg'))
-        fpaths.extend(fpaths_)
-        
-    os.chdir(olddir)
-
-    return fpaths
-
 if __name__=='__main__':
 
     categories = [os.path.split(i)[1] for i in glob(os.path.join(basedir, '50_categories', '*'))]
@@ -53,7 +39,7 @@ if __name__=='__main__':
     Y = np.array(Y)
 
     # initialize RFC
-    clf = RandomForestClassifier(n_estimators=20)
+    clf = RandomForestClassifier(n_estimators=50)
 
     # train and evaluate, with cross validation
     kf = cross_validation.KFold(nimgs, 10)

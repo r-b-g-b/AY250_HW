@@ -6,13 +6,35 @@ import numpy as np
 from skimage.io import imread
 from skimage.color import rgb2gray
 from skimage.feature import hog
-from skimage.transform import rescale
+from skimage.transform import resize
 from sklearn.decomposition import PCA
 
 numproc = cpu_count()
 
-def map_hog(fpaths):
+basedir = '/Users/robert/Documents/Code/pythonwork/AY250/python-seminar/Homeworks/AY250_HW/hw4'
+imgdir = os.path.join(basedir, '50_categories')
 
+def combine_hog():
+
+    hogs = np.empty((0, 15876))
+    hogfiles = glob(os.path.join(imgdir, 'hog_tmp_*.npz'))
+    for hogfile in hogfiles:
+        hog_ = np.load(hogfile)['arr_0']
+        hogs = np.vstack((hogs, hog_))
+
+    pca = RandomizedPCA(n_components=20)
+    hogs2 = pca.fit_transform(hogs)
+
+
+
+
+def map_hog(fpaths=None):
+
+    # load image file paths
+    if fpaths is None:
+        fpaths = get_fpaths()
+
+    # split paths for parallel processing
     fpaths_split = split_seq(fpaths, numproc)
     
     # initialize pool?
@@ -21,13 +43,17 @@ def map_hog(fpaths):
     result = p.map_async(calc_hog, fpaths_split)
     poolresult = result.get()
 
+    # concatenate results from multiple processes
     x = np.array(poolresult[0])
     for i in range(1, numproc):
         x = np.vstack((x, poolresult[i]))
 
+    # PCA on huge dimensioned features to get just 20 features
     n_components = 20
     pca = PCA(n_components=n_components)
     x2 = pca.fit_transform(x)
+
+    # create file name and category columns for DataFrame
     fnames = [os.path.split(i)[1] for i in fpaths]
     categories = [i.split('_')[0] for i in fnames]
 
@@ -37,20 +63,31 @@ def map_hog(fpaths):
 
     df.to_csv('hog.csv')
 
-
 def calc_hog(fpaths):
 
-    hogs = []
+    olddir = os.getcwd()
+    os.chdir(imgdir)
+    hogs = np.empty((100, 15876))
     
-    for fpath in fpaths:
+    j=42
+    for i, fpath in enumerate(fpaths):
+        if i%100==0 and i>0:
+            j+=1
+            print '%u of %u' % (i, len(fpaths))
+            np.savez('hog_tmp_%2.2u.npz'%j, hogs[:i, :])
+            hogs = np.empty((100, 15876))
         img = imread(fpath)
         if len(img.shape)==3:
             img = rgb2gray(img)
         # rescale so all feature vectors are the same length
-        img_resize = resize(img, (150, 200))
+        img_resize = resize(img, (128, 128))
         img_hog = hog(img_resize)
-        hogs.append(img_hog)
+        hogs[i%100, :] = img_hog
 
+    if i%100>0:
+        np.savez('hog_tmp_%2.2u.npz'%(j+1), hogs[:(i%100+1), :])
+
+    os.chdir(olddir)
     return hogs
 
 def calc_spatial_power_ratio(fpaths):
@@ -105,3 +142,17 @@ def split_seq(seq, size):
         int(round((i+1)*splitsize))])
     return newseq
 
+
+def get_fpaths(imgdir=imgdir):
+    # get image names
+    olddir = os.getcwd()
+    os.chdir(imgdir)
+    catpaths = glob(os.path.join('*'))
+    fpaths = []
+    for catpath in catpaths:
+        fpaths_ = glob(os.path.join(catpath, '*.jpg'))
+        fpaths.extend(fpaths_)
+        
+    os.chdir(olddir)
+
+    return fpaths
