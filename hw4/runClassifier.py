@@ -20,18 +20,16 @@ if __name__=='__main__':
     ncategories = len(categories)
 
     fpaths = calcFeatures.get_fpaths(os.path.join(basedir, '50_categories'))
-    nimgs = len(fpaths)
 
     # load previously calculated features
     corr_rgb = pd.read_csv('corr_rgb.csv', index_col=0)
     power_hist = pd.read_csv('power_hist.csv', index_col=0)
-
+    hog = pd.read_csv('hog.csv', index_col=0)
     df = corr_rgb.join(power_hist)
-
+    df = df.join(hog)
+    nimgs = len(df)
     X = df.filter(regex='feat_').values
     Y = df.category.values
-
-    Y_shuff = np.random.permutation(Y)
 
     # shuffle dataset
     XY = zip(X, Y)
