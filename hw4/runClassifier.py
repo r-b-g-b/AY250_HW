@@ -4,7 +4,7 @@ import os
 import pandas as pd
 
 from sklearn.ensemble import RandomForestClassifier
-from sklearn import cross_validation
+from sklearn.cross_validation import cross_val_score, KFold
 from scipy import ndimage as ndi
 import skimage as ski
 from sklearn.metrics import accuracy_score
@@ -17,7 +17,7 @@ if __name__=='__main__':
     categories = [os.path.split(i)[1] for i in glob(os.path.join(basedir, '50_categories', '*'))]
     ncategories = len(categories)
 
-    fpaths = get_fpaths(os.path.join(basedir, '50_categories'))
+    fpaths = calcFeatures.get_fpaths(os.path.join(basedir, '50_categories'))
     nimgs = len(fpaths)
 
     # load previously calculated features
@@ -39,21 +39,10 @@ if __name__=='__main__':
     Y = np.array(Y)
 
     # initialize RFC
-    clf = RandomForestClassifier(n_estimators=50)
+    clf = RandomForestClassifier(n_estimators=50, n_jobs=-1, compute_importances=True)
 
     # train and evaluate, with cross validation
-    kf = cross_validation.KFold(nimgs, 10)
-    scores = []
-    for train_ix, test_ix in kf:
-        train_x = X[train_ix]
-        train_y = Y[train_ix]
-        clf.fit(train_x, train_y)
-
-        test_x = X[test_ix]
-        test_y = Y[test_ix]
-        Y_hat = clf.predict(test_x)
-
-        scores.append(accuracy_score(test_y, Y_hat))
+    scores = cross_val_score(clf, X, Y, cv=KFold(n=nimgs, n_folds=5))
 
     print 'Mean accuracy score: %.4f +/- %.4f %%' % (100*np.mean(scores), 100*np.std(scores))
     print 'Accuracy with random guessing: %.4f %%' % (100./ncategories)

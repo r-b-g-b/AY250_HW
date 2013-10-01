@@ -91,15 +91,26 @@ def calc_hog(fpaths):
     return hogs
 
 def calc_spatial_power_ratio(fpaths):
+
     power_ratio = []
+    
+    fft_shape = (100, 51)
+    X, Y = np.meshgrid(np.arange(fft_shape[1]), np.arange(fft_shape[0]))
+    fft_dist = ((X**2)+(Y**2))**0.5
+    fft_dist = fft_dist.flatten()[1:]
+    fft_dist_bin = pd.cut(df.fft_dist, bins=np.arange(0, 120, 10))
 
     for fpath in fpaths:
         category, _ = os.path.split(fpath)
-        img = imread(fpath)
-        if len(img.shape)==3:
-            img = rgb2gray(img)
-        img_resize = resize(img, (300, 400))
-        IMG = np.fft.rfft2(img_resize)
+        from skimage.transform import resize
+        img2 = resize(img, (200, 200))
+        img_fft = np.fft.rfft2(img).flatten()[1:]
+        img_fft = img_fft / img_fft.sum()
+
+        df = pd.DataFrame(dict(fft_dist_bin=fft_dist_bin,
+            img_fft=np.abs(img_fft)))
+
+        df.groupby('fft_dist_bin').agg({'img_fft': np.sum})
 
     return power_ratio
 
