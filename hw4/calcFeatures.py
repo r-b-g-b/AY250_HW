@@ -94,24 +94,30 @@ def calc_spatial_power_ratio(fpaths):
 
     power_ratio = []
     
-    fft_shape = (100, 51)
+    fft_shape = (200, 101)
     X, Y = np.meshgrid(np.arange(fft_shape[1]), np.arange(fft_shape[0]))
     fft_dist = ((X**2)+(Y**2))**0.5
     fft_dist = fft_dist.flatten()[1:]
-    fft_dist_bin = pd.cut(df.fft_dist, bins=np.arange(0, 120, 10))
+    fft_dist_bin = pd.cut(fft_dist, bins=np.arange(0, 260, 20))
+    fft_dist_bin_start = [int(i[1:].split(',')[0]) for i in fft_dist_bin]
 
-    for fpath in fpaths:
-        category, _ = os.path.split(fpath)
-        from skimage.transform import resize
+    for i, fpath in enumerate(fpaths):
+        print '%u of %u: %s' % (i+1, len(fpaths), fpath)
+
+        img = imread(os.path.join(imgdir, fpath))
+        img = rgb2gray(img)
         img2 = resize(img, (200, 200))
-        img_fft = np.fft.rfft2(img).flatten()[1:]
+        img_fft = np.abs(np.fft.rfft2(img2).flatten()[1:])
         img_fft = img_fft / img_fft.sum()
 
-        df = pd.DataFrame(dict(fft_dist_bin=fft_dist_bin,
-            img_fft=np.abs(img_fft)))
+        df = pd.DataFrame(dict(fft_dist_bin=fft_dist_bin_start,
+            img_fft=img_fft))
 
-        df.groupby('fft_dist_bin').agg({'img_fft': np.sum})
+        distgp = df.groupby('fft_dist_bin').agg({'img_fft': np.sum})
 
+        power_ratio.append(distgp.values)
+
+    np.savetxt('power_ratio.csv', np.array(power_ratio), delimiter=',')
     return power_ratio
 
 def calc_rgb_corr(fpaths):
@@ -162,8 +168,8 @@ def get_fpaths(imgdir=imgdir):
     fpaths = []
     for catpath in catpaths:
         fpaths_ = glob(os.path.join(catpath, '*.jpg'))
-        fpaths.extend(fpaths_)
+        fpaths.extend([os.path.split(i)[1] for i in fpaths_])
         
     os.chdir(olddir)
-
+    fpaths.sort()
     return fpaths
