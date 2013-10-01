@@ -20,7 +20,7 @@ def combine_hog():
     '''
 
     hogs = np.empty((0, 15876))
-    hogfiles = glob(os.path.join(imgdir, 'hog_tmp_*.npz'))
+    hogfiles = glob(os.path.join('hog_tmp_*.npz'))
     for hogfile in hogfiles:
         hog_ = np.load(hogfile)['arr_0']
         hogs = np.vstack((hogs, hog_))
