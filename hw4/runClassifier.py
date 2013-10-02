@@ -11,17 +11,21 @@ import pickle
 basedir = '/Users/robert/Documents/Code/pythonwork/AY250/python-seminar/Homeworks/AY250_HW/hw4'
 imgdir = os.path.join(basedir, '50_categories')
 
-def run_final_classifier(testimgdir):
+def run_final_classifier(testimgdir, forestpath='trained_classifier.p'):
+    '''
+    Trains the classifier and runs it on a set of validation images.
+    '''
 
-
-    with open('model.p') as f:
-        clf = pickle.load(f)
-
+    clf = train(load_precomputed=False)
+    
     fpaths = glob(os.path.join(testimgdir, '*.jpg'))
-    fpaths = fpaths[:30]
+
+    # compute the features on the validation set
     hogs = calcFeatures.calc_hog(fpaths, save=False)
     power_hist = calcFeatures.calc_spatial_power_hist(fpaths, save=False)
     corr_rgb = calcFeatures.run_rgb_corr(fpaths, save=False)
+
+    # join them into one array
     df = pd.DataFrame()
     df = df.join(hogs, how='outer')
     df = df.join(power_hist, how='outer')
@@ -55,7 +59,7 @@ def compute_features():
 
     return df
 
-def train(load_precomputed=True):
+def train(load_precomputed=True, save=False):
 
     '''
     Load the computed features (corr_rgb, power_hist, and HOG), compile them
@@ -115,10 +119,12 @@ def train(load_precomputed=True):
         print '%10u. %s  %-.7f' % (i+1, feat_name, feat_imp)
 
 
-    print 'Saving the model.'
-    # save the model to a pickle
-    with open('trained_classifier.p', 'w') as f:
-        pickle.dump(clf, f)
+    if save:
+        print 'Saving the model.'
+        # save the model to a pickle
+        with open('trained_classifier.p', 'w') as f:
+            pickle.dump(clf, f)
 
+    return clf
 
 
