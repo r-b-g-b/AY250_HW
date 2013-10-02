@@ -3,7 +3,7 @@ This code trains an image classifier on a set of images stored in the directory 
 runClassifier.py
 	train : this function trains the classifier on the full set of images in 50 categories. It prints the output of classification and computes an accuracy estimate using 5-Fold cross-validation. It then saves the model to disk.
 	Input:
-		load_precomputed : if true it loads precomputed features, if false it computes the features from scratch
+		load_precomputed : default True. if true it loads precomputed features, if false it computes the features from scratch
 
 	run_final_classifier
 	this function loads the previously trained model and runs it on a set of images stored in the testimgdir in the testimgdir
