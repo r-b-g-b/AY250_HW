@@ -9,7 +9,16 @@ import calcFeatures
 basedir = '/Users/robert/Documents/Code/pythonwork/AY250/python-seminar/Homeworks/AY250_HW/hw4'
 imgdir = os.path.join(basedir, '50_categories')
 
-if __name__=='__main__':
+def run_final_classifier(imgdir):
+
+    fpaths = glob(os.path.join(imgdir, '*.jpg'))
+    for fpath in fpaths:
+        hogs = calcFeatures.calc_hog(fpaths)
+        power_hist = calcFeatures.calc_spatial_power_hist(fpaths)
+        corr_rgb = calcFeatures.calc_corr_rgb(fpaths)
+
+
+def run(load_precomputed=True):
 
     '''
     Load the computed features (corr_rgb, power_hist, and HOG), compile them
@@ -21,11 +30,14 @@ if __name__=='__main__':
 
     fpaths = calcFeatures.get_fpaths(os.path.join(basedir, '50_categories'))
 
-    # load previously calculated features
-    featpaths = glob('feat_*.csv')
     df = pd.DataFrame()
-    for featpath in featpaths:
-        df = df.join(pd.read_csv(featpath, index_col=0), how='outer')
+    if load_precomputed:
+        # load previously calculated features
+        featpaths = glob('feat_*.csv')
+        for featpath in featpaths:
+            df = df.join(pd.read_csv(featpath, index_col=0), how='outer')
+    else:
+        df.join(map_hog(fpaths), how='outer')
 
     nimgs = len(df)
     X = df.filter(regex='feat_').values

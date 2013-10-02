@@ -15,23 +15,21 @@ numproc = cpu_count()
 basedir = '/Users/robert/Documents/Code/pythonwork/AY250/python-seminar/Homeworks/AY250_HW/hw4'
 imgdir = os.path.join(basedir, '50_categories')
 
-def combine_hog():
-    '''
-    Load the many HOG output files into one array.
-    Compute the first 15 principal components of the original 15876-dimensional HOG array
-    Store the new features in a pandas DataFrame with 
-    Combine the many HOG output files into one array and attempt to compute principal components.
-    '''
 
-    hogs = np.empty((0, 15876))
-    hogfiles = glob(os.path.join('hog_tmp_*.npz'))
-    for hogfile in hogfiles:
-        hogs = np.vstack((hogs, np.load(hogfile)['arr_0']))
+def map_hog(fpaths):
+
+    # split fpaths for multiprocessing
+    fpaths_split = split_seq(fpaths, numproc)
+    
+    # initialize pool?
+    p = Pool(numproc)
+    # map jobs to processors
+    result = p.map_async(calc_hog, fpaths_split)
+    poolresult = result.get()
+
+    hogs = np.vstack(poolresult)
 
     hogs_sc = scale(hogs)
-
-    hog_fpaths = np.loadtxt('hog_fpaths.txt', 'S')
-    
     n_components = 15
     pca = RandomizedPCA(n_components=n_components)
     hogs_decomp = pca.fit_transform(hogs_sc)
@@ -39,7 +37,8 @@ def combine_hog():
     df = pd.DataFrame(hogs_decomp, index=[os.path.split(i)[1] for i in hog_fpaths])
     df.index.name='fpath'
     df.columns = ['feat_hog_%2.2u' % i for i in range(1, n_components+1)]
-    df.to_csv('hog.csv')
+    df.to_csv('hog2.csv')
+    return df
 
 def calc_hog(fpaths):
     '''
@@ -47,16 +46,12 @@ def calc_hog(fpaths):
     Input:
         fpaths : files on which HOG will be computed
     '''
+
     olddir = os.getcwd()
     os.chdir(imgdir)
-    hogs = np.empty((100, 15876))
-    j=0
-    for i, fpath in enumerate(fpaths[:5]):
-        if i%100==0 and i>0:
-            j+=1
-            print '%u of %u' % (i, len(fpaths))
-            np.savez('hog_tmp_%2.2u.npz'%j, hogs[:i, :])
-            hogs = np.empty((100, 15876))
+    hogs = np.empty((len(fpaths), 15876))
+
+    for i, fpath in enumerate(fpaths):
         img = imread(fpath)
         if len(img.shape)==3:
             img = rgb2gray(img)
@@ -64,14 +59,9 @@ def calc_hog(fpaths):
         img_resize = resize(img, (128, 128))
         img_hog = hog(img_resize)
 
-        hogs[i%100, :] = img_hog
+        hogs[i, :] = img_hog
 
-    if i%100>0:
-        np.savez('hog_tmp_%2.2u.npz'%(j+1), hogs[:(i%100+1), :])
-
-    np.savetxt('hog_fpaths.txt', fpaths, '%s')
-    os.chdir(olddir)
-    # return hogs
+    return hogs
 
 def calc_spatial_power_hist(fpaths):
     '''
@@ -114,8 +104,18 @@ def calc_spatial_power_hist(fpaths):
     power_hist.index.name='fpath'
     power_hist.columns = ['feat_power_%2.2u' % i for i in range(1, 13)]
     power_hist.to_csv('power_hist.csv')
-    # pd.DataFrame(dict(fpath=fpaths, power_ratio))
-    # np.savetxt('power_hist.csv', np.array(power_ratio), delimiter=',')
+
+def run_rgb_corr(fpaths):
+
+    tmp = calc_rgb_corr(fpaths[:50])
+    fpaths2, corr_rgb = zip(*tmp)
+
+    corr_rgb = np.array(corr_rgb)
+    df = pd.DataFrame(corr_rgb, index=fpaths2)
+    df.index.name = 'fpath'
+    df.columns = ['feat_corr_rgb_%2.2u'%i for i in range(1, len(df.columns)+1)]
+
+    return df
 
 def calc_rgb_corr(fpaths):
     '''
@@ -136,7 +136,7 @@ def calc_rgb_corr(fpaths):
             corr_rg, corr_rb, corr_gb = 0., 0., 0.
 
     corr_rgb = zip(corr_rg, corr_rb, corr_gb)
-    return corr_rgb
+    return zip(fpaths, corr_rgb)
 
 def map_feature_calculation(func, fpaths, func_name):
     '''
