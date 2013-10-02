@@ -19,7 +19,6 @@ def run_final_classifier(testimgdir, forestpath='trained_classifier.p'):
     clf = train(load_precomputed=True)
     
     fpaths = glob(os.path.join(testimgdir, '*.jpg'))
-    fpaths = fpaths[:33]
 
     # compute the features on the validation set
     print 'Computing features on validation set.\n'
