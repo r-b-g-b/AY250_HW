@@ -68,7 +68,6 @@ def calc_spatial_power_hist(fpaths, save=False):
 
     power_hist = pd.DataFrame()
     for i, fpath in enumerate(fpaths):
-        print '%u of %u: %s' % (i+1, len(fpaths), fpath)
 
         img = imread(os.path.join(imgdir, fpath))
         img = rgb2gray(img)

@@ -31,7 +31,7 @@ def run_final_classifier(testimgdir):
 
     Y_hat = clf.predict(X)
 
-    for fpath, y_hat in zip(df.fpath, Y_hat):
+    for fpath, y_hat in zip(df.index, Y_hat):
         print '%s\t\t%s' % (fpath, y_hat)
 
 
