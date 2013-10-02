@@ -14,9 +14,8 @@ imgdir = os.path.join(basedir, '50_categories')
 def run_final_classifier(testimgdir):
 
 
-    f = open('model.p')
-    clf = pickle.load(f)
-    f.close()
+    with open('model.p') as f:
+        clf = pickle.load(f)
 
     fpaths = glob(os.path.join(testimgdir, '*.jpg'))
     fpaths = fpaths[:30]
