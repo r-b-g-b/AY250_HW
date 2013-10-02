@@ -6,8 +6,7 @@ runClassifier.py
 	Input:
 		load_precomputed : default True. if true it loads precomputed features, if false it computes the features from scratch
 
-	run_final_classifier
-	this function loads the previously calculated features from the training set to generate a mode. it then runs the model on a set of validation images stored in the testimgdir.
+	run_final_classifier : this function loads the previously calculated features from the training set to generate a mode. it then runs the model on a set of validation images stored in the testimgdir.
 	Input:
 		testimgdir : absolute path to the test images
 
