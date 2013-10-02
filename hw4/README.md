@@ -1,3 +1,12 @@
+The important stuff...
+If you just do
+
+	import runClassifier
+	runClassifier.run_final_classifier(testimgdir)
+
+(where testimgdir is the absolute path to the validation images)
+it will 1. train the classifier on the training set, (printing all of the interesting stuff that comes from that), 2. apply the classifier to the test images. 
+
 This code trains an image classifier on a set of images stored in the directory '50_categories.' The features used are correlation coefficients between the three color channels (1-3), a 2-D FFT-based estimate of spectral power in 12 spectral frequency bins (4-16), and the first 15 principal components of the histogram of gradients (HOG).
 
 runClassifier.py
