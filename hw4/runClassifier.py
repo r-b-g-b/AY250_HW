@@ -118,8 +118,8 @@ def train(load_precomputed=True):
 
     print 'Saving the model.'
     # save the model to a pickle
-    f = open('model.p', 'w')
-    pickle.dump(clf, f)
-    f.close()
+    with open('trained_classifier.p', 'w') as f:
+        pickle.dump(clf, f)
+
 
 
