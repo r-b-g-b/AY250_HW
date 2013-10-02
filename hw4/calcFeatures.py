@@ -114,12 +114,17 @@ def calc_rgb_corr(fpaths):
     corr_rg, corr_rb, corr_gb = [], [], []
     for fpath in fpaths:
         img = imread(os.path.join(imgdir, fpath))
+        # if it's a color image
         if len(img.shape)==3:
-            corr_rg.append(np.corrcoef(img[...,0].flatten(), img[...,1].flatten())[0,1])
-            corr_rb.append(np.corrcoef(img[...,0].flatten(), img[...,2].flatten())[0,1])
-            corr_gb.append(np.corrcoef(img[...,1].flatten(), img[...,2].flatten())[0,1])
+            corr_rg_ = np.corrcoef(img[...,0].flatten(), img[...,1].flatten())[0,1]
+            corr_rb_ = np.corrcoef(img[...,0].flatten(), img[...,2].flatten())[0,1]
+            corr_gb_ = np.corrcoef(img[...,1].flatten(), img[...,2].flatten())[0,1]
+        # if the image is grayscale, just set the correlations to zero
         elif len(img.shape)==2:
-            corr_rg, corr_rb, corr_gb = 0., 0., 0.
+            corr_rg_, corr_rb_, corr_gb_ = 0, 0., 0.
+        corr_rg.append(corr_rg_)
+        corr_rb.append(corr_rb_)
+        corr_gb.append(corr_gb_)
 
     corr_rgb = zip(corr_rg, corr_rb, corr_gb)
     return zip([os.path.split(i)[1] for i in fpaths], corr_rgb)
