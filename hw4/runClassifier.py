@@ -4,7 +4,7 @@ import os
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.cross_validation import cross_val_score, KFold
-import calcFeatures
+import calcFeatures; reload(calcFeatures)
 import pickle
 
 basedir = '/Users/robert/Documents/Code/pythonwork/AY250/python-seminar/Homeworks/AY250_HW/hw4'
@@ -47,6 +47,7 @@ def train(load_precomputed=True):
     ncategories = len(categories)
 
     fpaths = calcFeatures.get_fpaths(os.path.join(basedir, '50_categories'))
+    fpaths = fpaths[::130]
 
     df = pd.DataFrame()
     if load_precomputed:
@@ -54,7 +55,13 @@ def train(load_precomputed=True):
         featpaths = glob('feat_*.csv')
         for featpath in featpaths:
             df = df.join(pd.read_csv(featpath, index_col=0), how='outer')
+    else:
+        df = df.join(calcFeatures.run_rgb_corr(fpaths, save=False), how='outer')
+        df = df.join(calcFeatures.calc_hog(fpaths, save=False), how='outer')
+        df = df.join(calcFeatures.calc_spatial_power_hist(fpaths, save=False), how='outer')
 
+    df['category'] = [i.split('_')[0] for i in df.index]
+    
     nimgs = len(df)
     X = df.filter(regex='feat_').values
     Y = df.category.values
@@ -77,7 +84,7 @@ def train(load_precomputed=True):
     clf.fit(X, Y)
 
     # save the model to a pickle
-    f = open('model.p', 'w')
+    f = open('model_2.p', 'w')
     pickle.dumps(clf, f)
     f.close()
 

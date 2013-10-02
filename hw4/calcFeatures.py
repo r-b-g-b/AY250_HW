@@ -20,6 +20,7 @@ def calc_hog(fpaths, save=False):
     Compute histogram of gradients (HOG). Saves in batches to prevent memory issues.
     Input:
         fpaths : files on which HOG will be computed
+        save : if true, output is saved to disk
     '''
 
     hogs = np.empty((len(fpaths), 15876))
@@ -55,8 +56,7 @@ def calc_spatial_power_hist(fpaths, save=False):
     preserves the frequency.
     Input:
         fpaths : the files for which this feature is computed
-
-    Output is saved to a file
+        save : if true, output is saved to a file
     '''
 
     fft_shape = (200, 101)
@@ -91,7 +91,7 @@ def calc_spatial_power_hist(fpaths, save=False):
 
 def run_rgb_corr(fpaths, save=False):
 
-    tmp = calc_rgb_corr(fpaths[:50])
+    tmp = calc_rgb_corr(fpaths)
     fpaths2, corr_rgb = zip(*tmp)
 
     corr_rgb = np.array(corr_rgb)
