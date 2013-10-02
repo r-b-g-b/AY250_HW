@@ -36,7 +36,7 @@ def run_final_classifier(testimgdir):
         print '%25s | %-20s' % (fpath, y_hat)
 
 
-def run(load_precomputed=True):
+def train(load_precomputed=True):
 
     '''
     Load the computed features (corr_rgb, power_hist, and HOG), compile them
