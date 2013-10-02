@@ -5,17 +5,34 @@ import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.cross_validation import cross_val_score, KFold
 import calcFeatures
+import pickle
 
 basedir = '/Users/robert/Documents/Code/pythonwork/AY250/python-seminar/Homeworks/AY250_HW/hw4'
 imgdir = os.path.join(basedir, '50_categories')
 
-def run_final_classifier(imgdir):
+def run_final_classifier(testimgdir):
 
-    fpaths = glob(os.path.join(imgdir, '*.jpg'))
-    for fpath in fpaths:
-        hogs = calcFeatures.calc_hog(fpaths)
-        power_hist = calcFeatures.calc_spatial_power_hist(fpaths)
-        corr_rgb = calcFeatures.calc_corr_rgb(fpaths)
+
+    f = open('model.p')
+    clf = pickle.load(f)
+    f.close()
+
+    fpaths = glob(os.path.join(testimgdir, '*.jpg'))
+    fpaths = fpaths[:30]
+    hogs = calcFeatures.calc_hog(fpaths, save=False)
+    power_hist = calcFeatures.calc_spatial_power_hist(fpaths, save=False)
+    corr_rgb = calcFeatures.run_rgb_corr(fpaths, save=False)
+    df = pd.DataFrame()
+    df = df.join(hogs, how='outer')
+    df = df.join(power_hist, how='outer')
+    df = df.join(corr_rgb, how='outer')
+
+    X = df.filter(regex='feat_').values
+
+    Y_hat = clf.predict(X)
+
+    for fpath, y_hat in zip(df.fpath, Y_hat):
+        print '%s\t\t%s' % (fpath, y_hat)
 
 
 def run(load_precomputed=True):
@@ -36,8 +53,6 @@ def run(load_precomputed=True):
         featpaths = glob('feat_*.csv')
         for featpath in featpaths:
             df = df.join(pd.read_csv(featpath, index_col=0), how='outer')
-    else:
-        df.join(map_hog(fpaths), how='outer')
 
     nimgs = len(df)
     X = df.filter(regex='feat_').values
@@ -56,6 +71,14 @@ def run(load_precomputed=True):
 
     # train and evaluate, with cross validation
     scores = cross_val_score(clf, X, Y, cv=KFold(n=nimgs, n_folds=5))
+
+    # fit the model
+    clf.fit(X, Y)
+
+    # save the model to a pickle
+    f = open('model.p', 'w')
+    pickle.dumps(clf, f)
+    f.close()
 
     print 'Mean accuracy score: %.4f +/- %.4f %%' % (100*np.mean(scores), 100*np.std(scores))
     print 'Accuracy with random guessing: %.4f %%' % (100./ncategories)

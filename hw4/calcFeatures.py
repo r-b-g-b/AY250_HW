@@ -15,44 +15,17 @@ numproc = cpu_count()
 basedir = '/Users/robert/Documents/Code/pythonwork/AY250/python-seminar/Homeworks/AY250_HW/hw4'
 imgdir = os.path.join(basedir, '50_categories')
 
-
-def map_hog(fpaths):
-
-    # split fpaths for multiprocessing
-    fpaths_split = split_seq(fpaths, numproc)
-    
-    # initialize pool?
-    p = Pool(numproc)
-    # map jobs to processors
-    result = p.map_async(calc_hog, fpaths_split)
-    poolresult = result.get()
-
-    hogs = np.vstack(poolresult)
-
-    hogs_sc = scale(hogs)
-    n_components = 15
-    pca = RandomizedPCA(n_components=n_components)
-    hogs_decomp = pca.fit_transform(hogs_sc)
-
-    df = pd.DataFrame(hogs_decomp, index=[os.path.split(i)[1] for i in hog_fpaths])
-    df.index.name='fpath'
-    df.columns = ['feat_hog_%2.2u' % i for i in range(1, n_components+1)]
-    df.to_csv('hog2.csv')
-    return df
-
-def calc_hog(fpaths):
+def calc_hog(fpaths, save=False):
     '''
     Compute histogram of gradients (HOG). Saves in batches to prevent memory issues.
     Input:
         fpaths : files on which HOG will be computed
     '''
 
-    olddir = os.getcwd()
-    os.chdir(imgdir)
     hogs = np.empty((len(fpaths), 15876))
 
     for i, fpath in enumerate(fpaths):
-        img = imread(fpath)
+        img = imread(os.path.join(imgdir, fpath))
         if len(img.shape)==3:
             img = rgb2gray(img)
         # rescale so all feature vectors are the same length
@@ -61,9 +34,19 @@ def calc_hog(fpaths):
 
         hogs[i, :] = img_hog
 
-    return hogs
+    hogs_sc = scale(hogs)
+    n_components = 15
+    pca = RandomizedPCA(n_components=n_components)
+    hogs_decomp = pca.fit_transform(hogs_sc)
 
-def calc_spatial_power_hist(fpaths):
+    df = pd.DataFrame(hogs_decomp, index=[os.path.split(i)[1] for i in fpaths])
+    df.index.name='fpath'
+    df.columns = ['feat_hog_%2.2u' % i for i in range(1, n_components+1)]
+    if save: df.to_csv('hog.csv')
+    
+    return df
+
+def calc_spatial_power_hist(fpaths, save=False):
     '''
     A set of features that attempts to represent the distributions of 
     spatial frequencies present in the image. Calculates a 2-D FFT
@@ -103,9 +86,11 @@ def calc_spatial_power_hist(fpaths):
 
     power_hist.index.name='fpath'
     power_hist.columns = ['feat_power_%2.2u' % i for i in range(1, 13)]
-    power_hist.to_csv('power_hist.csv')
+    
+    if save: power_hist.to_csv('power_hist.csv')
+    return power_hist
 
-def run_rgb_corr(fpaths):
+def run_rgb_corr(fpaths, save=False):
 
     tmp = calc_rgb_corr(fpaths[:50])
     fpaths2, corr_rgb = zip(*tmp)
@@ -114,6 +99,8 @@ def run_rgb_corr(fpaths):
     df = pd.DataFrame(corr_rgb, index=fpaths2)
     df.index.name = 'fpath'
     df.columns = ['feat_corr_rgb_%2.2u'%i for i in range(1, len(df.columns)+1)]
+
+    if save: df.to_csv('corr_rgb.csv')
 
     return df
 
@@ -127,7 +114,7 @@ def calc_rgb_corr(fpaths):
     '''
     corr_rg, corr_rb, corr_gb = [], [], []
     for fpath in fpaths:
-        img = imread(fpath)
+        img = imread(os.path.join(imgdir, fpath))
         if len(img.shape)==3:
             corr_rg.append(np.corrcoef(img[...,0].flatten(), img[...,1].flatten())[0,1])
             corr_rb.append(np.corrcoef(img[...,0].flatten(), img[...,2].flatten())[0,1])
@@ -136,7 +123,7 @@ def calc_rgb_corr(fpaths):
             corr_rg, corr_rb, corr_gb = 0., 0., 0.
 
     corr_rgb = zip(corr_rg, corr_rb, corr_gb)
-    return zip(fpaths, corr_rgb)
+    return zip([os.path.split(i)[1] for i in fpaths], corr_rgb)
 
 def map_feature_calculation(func, fpaths, func_name):
     '''
