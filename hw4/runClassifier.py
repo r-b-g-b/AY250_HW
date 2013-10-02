@@ -30,9 +30,10 @@ def run_final_classifier(testimgdir):
     X = df.filter(regex='feat_').values
 
     Y_hat = clf.predict(X)
-
+    print '%25s | %-20s' % ('filename', 'predicted_class')
+    print '-'*50
     for fpath, y_hat in zip(df.index, Y_hat):
-        print '%s\t\t%s' % (fpath, y_hat)
+        print '%25s | %-20s' % (fpath, y_hat)
 
 
 def run(load_precomputed=True):
