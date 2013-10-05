@@ -1,3 +1,4 @@
+import wx
 import xmlrpclib
 import Image
 import os
@@ -6,51 +7,88 @@ from glob import glob
 host, port = "", 5021
 server = xmlrpclib.ServerProxy('http://%s:%d' % (host, port))
 
-clientbasepath = os.getcwd()
 
-# get user's method selection
-available_methods = server.system.listMethods()
-nmethods = len(available_methods)
-print 'Available methods from server:'
-for i, method in enumerate(available_methods):
-	print '\t%u. %s' % (i+1, method)
+class Frame(wx.Frame):
+	
+	def __init__(self, title, server):
 
-while True:
-	try:
-		meth_ix = int(raw_input('Select method--> '))
-		if meth_ix>nmethods:
-			print 'There is no method #%u. Please enter a number between 1 and %u.' % (meth_ix, nmethods)
-		else: break
-	except ValueError:
-		print 'Please enter a valid number.'
+		wx.Frame.__init__(self, None, title=title, size=(350, 300))
+		
+		self.server = server
+		self.methods = server.available_methods()
+		# set base directory
+		self.clientbasedir = os.getcwd()
+
+		# bind window close to confirmation dialog
+		self.Bind(wx.EVT_CLOSE, self.OnClose)
+
+		# make the menu
+		menuBar = wx.MenuBar()
+		menu = wx.Menu()
+		m_exit = menu.Append(wx.ID_EXIT, 'E&xit\tAlt-X', 'Close window and exit program.')
+
+		self.Bind(wx.EVT_MENU, self.OnClose, m_exit)
+		menuBar.Append(menu, '%File')
+		self.SetMenuBar(menuBar)
+
+		# make the status bar
+		self.statusbar = self.CreateStatusBar()
+
+		# make a text panel
+		panel = wx.Panel(self)
+		box = wx.BoxSizer(wx.HORIZONTAL)
+
+		# add a file select button
+		m_fdialog = wx.Button(panel, label='Choose image')
+		m_fdialog.Bind(wx.EVT_BUTTON, self.OnSelectImage)
+		box.Add(m_fdialog, 0, wx.ALL, 10)
+
+		# add a method select button
+		method_list = wx.ListCtrl(panel, label='Choose method')
+		method_list.InsertColumn(0, 'Method')
+		for i, method in enumerate(self.methods):
+			method_list.InsertStringItem(i, method)
+		box.Add(method_list, 0, wx.ALL, 10)
+
+		method_button = wx.Button(panel, label='Apply method to image')
+		method_button.Bind(EVT_BUTTON, self.OnRun)
+
+		box.Add(m_method, 0, wx.ALL, 10)
+
+		# add a close button
+		m_close = wx.Button(panel, wx.ID_CLOSE, 'Close')
+		m_close.Bind(wx.EVT_BUTTON, self.OnClose)
+		box.Add(m_close, 0, wx.ALL, 10)
+
+		panel.SetSizer(box)
+		panel.Layout()
+
+	def OnClose(self, event):
+		dlg = wx.MessageDialog(self,
+			'Do you really want to close this application?',
+			'Confirm Exit', wx.OK|wx.CANCEL|wx.ICON_QUESTION)
+		result = dlg.ShowModal()
+		dlg.Destroy()
+		if result==wx.ID_OK:
+			self.Destroy()
+
+	def OnSelectImage(self, event):
+		dlg = wx.FileDialog(self,
+			wildcard='Images|*.jpeg;*.jpg;*.png;*.tif;*.tiff;*.bmp|\
+			All files|*.*',
+			defaultDir=self.clientbasedir,
+			style = wx.OK|wx.CANCEL)
+		# dlg.SetDirectory(self.clientbasedir)
+		# dlg.SetWildcard('*.jpg*.jpeg*')
+		if dlg.ShowModal() == wx.ID_OK:
+			self.imgpath = dlg.GetPath()
+		dlg.Destroy()
+
+	def OnRun(self, event):
+		pass
 
 
-# make a list of available images in this directory
-imgextens = ['jpg', 'jpeg', 'png', 'tif', 'tiff', 'bmp']
-imgpaths = []
-for imgexten in imgextens:
-	imgpaths.extend(glob(os.path.join(clientbasepath, '*.%s' % imgexten)))
-
-print 'Images in %s' % clientbasepath
-
-# print available image paths
-for i, imgpath in enumerate(imgpaths):
-	print '\t%u. %s' % (i+1, os.path.split(imgpath)[1])
-
-# get user's image selection
-while True:
-	try:
-		img_ix = int(raw_input('Select image--> '))
-		if img_ix>len(imgpaths):
-			print 'There is no image #%u. Please enter a number between 1 and %u.' % (img_ix, len(imgpaths))
-		else: break
-	except ValueError:
-		print 'Please enter a valid number.'
-
-# load the selected image
-imgpath = imgpaths[i-1]
-img = Image.open(imgpath)
-
-
-eval('server.%s(img)' % available_methods[meth_ix-1])
-
+app = wx.App(redirect=True)
+top = Frame('XML-RCP Server Client', server)
+top.Show()
+app.MainLoop()
