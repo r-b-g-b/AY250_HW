@@ -37,7 +37,11 @@ class messWithImage:
 		return img2
 
 	def get_next_filepath(prefix='ServerImage_', exten='.png'):
-		
+		'''
+		Given a file prefix, this function returns an unused filepath
+		in the base directory
+		'''
+
 		done = False
 		i = 0
 		while not done:
@@ -49,6 +53,11 @@ class messWithImage:
 				return relpath
 
 	def saveImages(img, img2):
+		'''
+		Given the original and modified images (type PIL Images)
+		this function will built appropriate filepaths and save the
+		images
+		'''
 
 		imgpath_base, imgpath_exten = os.path.splitext(img.filename)
 		imgpath_serv_base = imgpath_base+'_server_original_'
@@ -71,4 +80,6 @@ server.register_instance(messWithImage())
 server.register_multicall_functions()
 server.register_introspection_functions()
 
-print "Server starting at: ", host port
+print "Server starting at: ", host, port
+
+server.serve_forever()
