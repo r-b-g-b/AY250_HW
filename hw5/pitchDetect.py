@@ -5,21 +5,34 @@ from matplotlib import pyplot as plt
 from statsmodels.tsa.stattools import acf
 from scipy.signal import periodogram, hilbert
 
-
 class pitchDetect(object):
 
 	def __init__(self, fpath):
 
-		print 'V0.1'
+		print fpath
+
 		self.fpath = fpath
 		self.load_aiff()
 
-		self.get_middle(frac=0.01)
-
+		self._get_middle(frac=0.01)
 		self.axs = []
+
+		self.calc_periodogram()
+		self.detect('m1')
 
 		# self.acorr = acf(self.s2)
 		# self.rms = self.rms()
+
+	def detect(self, method):
+
+		if method=='m1':
+
+			pitch = self.Sxx_freq[self.Sxx.argmax()]
+			print pitch
+			self.plot_periodogram()
+			ax = self.axs[-1]
+
+			ax.axvline(pitch, color='r', ls='--')
 
 	def load_aiff(self):
 		'''
@@ -40,7 +53,7 @@ class pitchDetect(object):
 		self._minfreq = 50.
 		self._maxfreq = 18000.
 
-	def get_middle(self, frac=0.5):
+	def _get_middle(self, frac=0.5):
 
 		start = int((0.5-frac)*self.s.size)
 		stop = int((0.5+frac)*self.s.size)
@@ -54,7 +67,7 @@ class pitchDetect(object):
 
 	def calc_periodogram(self):
 
-		self.Sxx_freq, self.Sxx = periodogram(self.s2, fs=self.fs)
+		self.Sxx_freq, self.Sxx = periodogram(self.s2, fs=self.fs, window='hamming', return_onesided=True)
 
 	def calc_rms(self):
 		self.rms = np.sqrt(self.s2**2.)
@@ -90,6 +103,14 @@ class pitchDetect(object):
 		self.C_freq = C_freq
 		self.Slm = Slm
 
+	def plot_periodogram(self):
+
+		fig, ax = plt.subplots()
+		ax.plot(self.Sxx_freq, self.Sxx)
+
+		self.axs.append(ax)
+
+
 	def plot_fft(self, ax=None):
 
 		if not hasattr(self, 'S'):
@@ -120,5 +141,3 @@ class pitchDetect(object):
 	@staticmethod
 	def _windowed(x):
 		return x * np.hamming(x.size)
-
-
