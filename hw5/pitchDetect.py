@@ -1,9 +1,10 @@
-import os, aifc
-from glob import glob
+import aifc
 import numpy as np
 from matplotlib import pyplot as plt
 from statsmodels.tsa.stattools import acf
 from scipy.signal import periodogram, hilbert
+import scikits.audiolab as al
+from scipy.interpolate import InterpolatedUnivariateSpline
 
 class pitchDetect(object):
 
@@ -19,6 +20,7 @@ class pitchDetect(object):
 
 		self.calc_periodogram()
 		self.detect('m1')
+		self.check()
 
 		# self.acorr = acf(self.s2)
 		# self.rms = self.rms()
@@ -27,12 +29,30 @@ class pitchDetect(object):
 
 		if method=='m1':
 
-			pitch = self.Sxx_freq[self.Sxx.argmax()]
-			print pitch
+			ix_center = self.Sxx.argmax()
+			# ix = self.Sxx_freq[self.Sxx.argmax()]
+			ix_min = max([0, ix_center-10])
+			ix_max = min([ix_center+10, len(self.Sxx)])
+			Sxx2 = self.Sxx[ix_min:ix_max]
+			Sxx_freq2 = self.Sxx_freq[ix_min:ix_max]
+
+			spl = InterpolatedUnivariateSpline(Sxx_freq2, Sxx2)
+			xs = np.linspace(Sxx_freq2.min(), Sxx_freq2.max(), 500)
+
+			y = spl(xs)
+
+			pitch = xs[y.argmax()]
+			# pitch = self.Sxx_freq[self.Sxx.argmax()]
 			self.plot_periodogram()
 			ax = self.axs[-1]
 
 			ax.axvline(pitch, color='r', ls='--')
+			
+			self.pitch = pitch
+
+			print 'Detected pitch: %f\n' % pitch
+
+
 
 	def load_aiff(self):
 		'''
@@ -44,13 +64,15 @@ class pitchDetect(object):
 		a = f.readframes(f.getnframes())
 		s = np.fromstring(a, np.short).byteswap()
 
+		# normalize to 1
+		s = np.float64(s) / s.max()
 		# remove bias
 		s = s - s.mean()
 
 		self.s = s
 		self.fs = fs
 
-		self._minfreq = 50.
+		self._minfreq = 40.
 		self._maxfreq = 18000.
 
 	def _get_middle(self, frac=0.5):
@@ -67,7 +89,15 @@ class pitchDetect(object):
 
 	def calc_periodogram(self):
 
-		self.Sxx_freq, self.Sxx = periodogram(self.s2, fs=self.fs, window='hamming', return_onesided=True)
+		Sxx_freq, Sxx = periodogram(self.s2, fs=self.fs,
+			window='hamming', return_onesided=True)
+		ix = np.vstack((Sxx_freq>self._minfreq,
+				Sxx_freq<self._maxfreq)).all(0)
+		Sxx = Sxx[ix]	
+		Sxx_freq = Sxx_freq[ix]
+
+		self.Sxx = Sxx
+		self.Sxx_freq = Sxx_freq
 
 	def calc_rms(self):
 		self.rms = np.sqrt(self.s2**2.)
@@ -80,7 +110,7 @@ class pitchDetect(object):
 
 		wind = np.hamming(self.s2.size)
 		S = np.fft.fft(self.s2*wind)
-		# S = S[:-1]
+
 		S_freq = np.fft.fftfreq(self.s2.size, 1./self.fs)
 		S_freq = S_freq[:S.size]
 
@@ -138,6 +168,37 @@ class pitchDetect(object):
 			axs[1].set_xticks(np.arange(0, self.acorr.size, 100))
 			axs[1].set_xticklabels(self.acorr_freq[np.arange(0, self.acorr.size, 100)])
 
+	def playSound(self):
+
+		al.play(self._ramped(self.s2, self.fs), self.fs)
+
+	def check(self, freq=None):
+		if freq is None: freq = self.pitch
+		self.playSound()
+		self.playTone(freq)
+
 	@staticmethod
 	def _windowed(x):
 		return x * np.hamming(x.size)
+
+	@staticmethod
+	def _ramped(x, fs, ramplen=0.1):
+
+		w = np.hamming(ramplen*fs)
+		att = w[:(w.size/2)]
+		sus = np.ones(x.size-2*att.size)
+		rel = att[::-1]
+		wind = np.concatenate((att, sus, rel))
+		return x*wind
+
+	def playTone(self, freq):
+
+		t = np.arange(0, 0.5, 1./self.fs)
+		s = np.sin(2*np.pi*freq*t)
+
+		s_ramp = self._ramped(s, self.fs)
+
+		al.play(s_ramp, self.fs)
+
+
+

@@ -1,45 +1,70 @@
 from SimpleXMLRPCServer import SimpleXMLRPCServer
 from numpy import array, uint8
+from numpy.random import permutation
 import Image
 import os
 from glob import glob
 
-
 class messWithImage:
+	'''
+	A class containing image manipulation functions.
+	Set the method parameter to determine which manipulation is performed.
+	
+	Input:
+
+		img : the image array
+		imgpath : relative filepath for the original image
+
+		method:
+			'flip' : flips the image vertically (axis=0) or horizontally (axis=1)
+			'tile' : replicates the image (m: vertical copies, n: horizontal copies)
+			'trip' : randomly permute the color channel for each pixel
+			'swap_RG' : swap the red and green color channels
+			'swap_RB' : swap the red and blue color channels
+			'swap_GB' : swap the green and blue color channels
+
+
+	'''
 
 	def __init__(self):
 
 		self.serverbasedir = os.getcwd()
 
-	def tile(self, imglist, imgshape, imgpath, nx=4, ny=4):
+	def mess(self, imglist, imgshape, imgpath, method, **kwargs):
 
-		img = Image.fromarray(array(imglist).astype(uint8).reshape(imgshape))
-		print 'Image has been tiled!'
-		img2 = img.copy()
-
-		outpath, outpath2, suffix = self._saveImages(img, img2, imgpath, 'tile')
-		
-		imgshape2 = list(img2.size)
-		imgshape2.extend([len(img2.getbands())])
-		
-		return array(img2).flatten().tolist(), imgshape2, suffix
-
-	def flip(self, imglist, imgshape, imgpath, axis=0):
-		'''
-		Flips the image over its horizontal (0) or vertical (1) axis
-		Input:
-			img : the image array
-			imgpath : relative filepath for the original image
-		'''
 		img = Image.fromarray(array(imglist).astype(uint8).reshape(imgshape))
 		img2 = img.copy()
 
-		if axis==0:
-			img2 = img2.transpose(Image.FLIP_LEFT_RIGHT)
-		elif axis==1:
-			img2 = img2.transpose(Image.FLIP_TOP_BOTTOM)
+		if method=='flip':
+		# Flips the image over its horizontal (0) or vertical (1) axis
+			if axis==0:
+				img2 = img2.transpose(Image.FLIP_LEFT_RIGHT)
+			elif axis==1:
+				img2 = img2.transpose(Image.FLIP_TOP_BOTTOM)
 
-		outpath, outpath2, suffix = self._saveImages(img, img2, imgpath, 'flip')
+		if method=='tile':
+			pass
+
+		if method=='trip':
+			
+			ncols, nrows = img.shape
+			for i in range(ncols):
+				for j in range(nrows):
+					img2[i, j, :] = img[i, j, permutation(np.arange(3))]
+
+		if method=='swap_RG':
+			img2[:, :, 0] = img[:, :, 1]
+			img2[:, :, 1] = img[:, :, 0]
+
+		if method=='swap_RB':
+			img2[:, :, 0] = img[:, :, 2]
+			img2[:, :, 2] = img[:, :, 0]
+
+		if method=='swap_GB':
+			img2[:, :, 1] = img[:, :, 2]
+			img2[:, :, 2] = img[:, :, 1]
+
+		outpath, outpath2, suffix = self._saveImages(img, img2, imgpath, method)
 
 		imgshape2 = list(img2.size)
 		imgshape2.extend([len(img2.getbands())])
@@ -94,4 +119,4 @@ print "Server starting at: ", host, port
 try:
 	server.serve_forever()
 except:
-	server.close()
+	server.server_close()
