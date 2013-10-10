@@ -15,7 +15,8 @@ class Client(object):
 
 		self.server = server
 
-		self.imgformats = ['.bmp', '.gif', '.png', '.tif', '.tiff']
+		self.imgformats = ['.bmp', '.gif', '.png',
+			'.jpeg', '.jpg', '.tif', '.tiff']
 		self.methods = server.system.listMethods()
 		self.methods = [m for m in self.methods if (not m.startswith('_')) and (not m.startswith('system.')) and (not m=='mess')]
 
