@@ -1,3 +1,4 @@
+import os
 import aifc
 import numpy as np
 from matplotlib import pyplot as plt
@@ -17,6 +18,10 @@ class pitchDetect(object):
 		self.fpath = fpath
 		self.basedir, tmp = os.path.split(self.fpath)
 		self.title, _ = os.path.splitext(tmp)
+
+		# minimum and maximum frequencies to consider for the pitch
+		self._minfreq = 40.
+		self._maxfreq = 18000.
 
 		self.load_aiff()
 
@@ -39,9 +44,9 @@ class pitchDetect(object):
 			Sxx2 = self.Sxx[ix_min:ix_max]
 			Sxx_freq2 = self.Sxx_freq[ix_min:ix_max]
 
+			# interpolate the periodogram to get a better estimate of the actual peak
 			spl = InterpolatedUnivariateSpline(Sxx_freq2, Sxx2)
 			xs = np.linspace(Sxx_freq2.min(), Sxx_freq2.max(), 500)
-
 			y = spl(xs)
 
 			pitch = xs[y.argmax()]
@@ -50,7 +55,10 @@ class pitchDetect(object):
 			ax = self.axs[-1]
 
 			ax.axvline(pitch, color='r', ls='--')
+
+			ax.set_xlim(0, 2000)
 			
+			# save the plot
 			ax.get_figure().savefig(os.path.join(self.basedir, '%s_fig.png' % self.title))
 
 			self.pitch = pitch
@@ -74,9 +82,6 @@ class pitchDetect(object):
 
 		self.s = s
 		self.fs = fs
-
-		self._minfreq = 40.
-		self._maxfreq = 18000.
 
 	def _get_middle(self, frac=0.5):
 		'''
