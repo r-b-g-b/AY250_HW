@@ -9,7 +9,7 @@ class messWithImage:
 	'''
 	A class containing image manipulation functions.
 	Set the method parameter to determine which manipulation is performed.
-	
+
 	Input:
 
 		img : the image array
@@ -17,58 +17,107 @@ class messWithImage:
 
 		method:
 			'flip' : flips the image vertically (axis=0) or horizontally (axis=1)
-			'tile' : replicates the image (m: vertical copies, n: horizontal copies)
 			'trip' : randomly permute the color channel for each pixel
 			'swap_RG' : swap the red and green color channels
 			'swap_RB' : swap the red and blue color channels
 			'swap_GB' : swap the green and blue color channels
-
-
+			'square' : square each value in the image array
 	'''
 
 	def __init__(self):
 
-		self.serverbasedir = os.getcwd()
+		self.serverbasedir = os.path.join(os.getcwd(), 'server')
+		if not os.path.exists(self.serverbasedir):
+			os.mkdir(self.serverbasedir)
 
-	def mess(self, imglist, imgshape, imgpath, method, **kwargs):
+		self.require_RGB = ['swap_RG', 'swap_RB', 'swap_GB', 'trip']
 
-		img = Image.fromarray(array(imglist).astype(uint8).reshape(imgshape))
-		img2 = img.copy()
+	def vflip(self):
+		'''
+		Flips the image on its vertical axis
+		'''
+		self.img2 = self.img2.transpose(Image.FLIP_LEFT_RIGHT)
 
-		if method=='flip':
-		# Flips the image over its horizontal (0) or vertical (1) axis
-			if axis==0:
-				img2 = img2.transpose(Image.FLIP_LEFT_RIGHT)
-			elif axis==1:
-				img2 = img2.transpose(Image.FLIP_TOP_BOTTOM)
+	def hflip(self):
+		'''
+		Flips the image on its horizontal axis
+		'''
+		self.img2 = self.img2.transpose(Image.FLIP_TOP_BOTTOM)
 
-		if method=='tile':
-			pass
+	def trip(self):
+		'''
+		Randomly permutes the color channel for each pixel
+		'''
+		imgarr = array(self.img)
+		imgarr2 = imgarr.copy()
+		ncols, nrows = imgarr.shape[:2]
+		for i in range(ncols):
+			for j in range(nrows):
+				imgarr2[i, j, :] = imgarr[i, j, permutation(range(3))]
+		self.img2 = Image.fromarray(imgarr2)
 
-		if method=='trip':
-			
-			ncols, nrows = img.shape
-			for i in range(ncols):
-				for j in range(nrows):
-					img2[i, j, :] = img[i, j, permutation(np.arange(3))]
+	def square(self):
+		'''
+		Squares each value in the image array
+		'''
+		imgarr = array(self.img)
+		imgarr2 = (imgarr**2.)
+		imgarr2 = uint8(255. * (imgarr2 / imgarr2.max()))
+		self.img2 = Image.fromarray(imgarr2)
 
-		if method=='swap_RG':
-			img2[:, :, 0] = img[:, :, 1]
-			img2[:, :, 1] = img[:, :, 0]
+	def swap_RG(self):
+		'''
+		Swaps the red and green color channels
+		'''
+		imgarr = array(self.img)
+		imgarr2 = imgarr.copy()
+		imgarr2[:, :, 0] = imgarr[:, :, 1]
+		imgarr2[:, :, 1] = imgarr[:, :, 0]
+		self.img2 = Image.fromarray(imgarr2)
 
-		if method=='swap_RB':
-			img2[:, :, 0] = img[:, :, 2]
-			img2[:, :, 2] = img[:, :, 0]
+	def swap_RB(self):
+		'''
+		Swaps the red and blue color channels
+		'''
+		imgarr = array(self.img)
+		imgarr2 = imgarr.copy()
+		imgarr2[:, :, 0] = imgarr[:, :, 2]
+		imgarr2[:, :, 2] = imgarr[:, :, 0]
+		self.img2 = Image.fromarray(imgarr2)
 
-		if method=='swap_GB':
-			img2[:, :, 1] = img[:, :, 2]
-			img2[:, :, 2] = img[:, :, 1]
+	def swap_GB(self):
+		'''
+		Swaps the green and blue color channels
+		'''
+		imgarr = array(self.img)
+		imgarr2 = imgarr.copy()
+		imgarr2[:, :, 1] = imgarr[:, :, 2]
+		imgarr2[:, :, 2] = imgarr[:, :, 1]
+		self.img2 = Image.fromarray(imgarr2)
 
-		outpath, outpath2, suffix = self._saveImages(img, img2, imgpath, method)
+	def mess(self, imglist, imgshape, imgpath, method):
+		'''
+		'''
+		print 'Server applying %s' % method
+		self.imglist = imglist
+		self.imgshape = imgshape
+		self.imgpath = os.path.split(imgpath)[1] # take just the relative path
+		self.img = Image.fromarray(array(imglist).astype(uint8).reshape(imgshape, order='C'))
+		self.img2 = self.img.copy()
+		self.method = method
 
-		imgshape2 = list(img2.size)
-		imgshape2.extend([len(img2.getbands())])
-		return array(img2).flatten().tolist(), imgshape2, suffix
+		if (method in self.require_RGB) and (not len(imgshape)==3):
+			print 'Image must be RGB format.'
+			return [None]*3
+
+		# call the user-selected method
+		eval('self.%s()' % method)
+
+		outpath, outpath2, suffix = self._saveImages()
+
+		imgshape2 = list(self.img2.size)
+		imgshape2.extend([len(self.img2.getbands())])
+		return array(self.img2).flatten().tolist(), imgshape2, suffix
 
 	def _get_next_filepath(self, prefix='ServerImage_', exten='.png'):
 		'''
@@ -86,26 +135,24 @@ class messWithImage:
 			else:
 				return relpath, suffix
 
-	def _saveImages(self, img, img2, imgpath, modtype):
+	def _saveImages(self):
 		'''
 		Given the original and modified images (type PIL Images)
 		this function will built appropriate filepaths and save the
 		images
 		'''
 
-		imgpath_base, imgpath_exten = os.path.splitext(imgpath)
-		imgpath_serv_base = imgpath_base+'_server_original_'
-		imgpath_serv_base2 = imgpath_base+'_server_%s_' % modtype
+		imgpath_base, imgpath_exten = os.path.splitext(self.imgpath)
+		imgpath_serv_base = imgpath_base+'_server_%s_original_' % self.method
+		imgpath_serv_base2 = imgpath_base+'_server_%s_' % self.method
 
 		imgpath_serv, suffix = self._get_next_filepath(prefix=imgpath_serv_base, exten=imgpath_exten)
 		imgpath_serv2, suffix = self._get_next_filepath(prefix=imgpath_serv_base2, exten=imgpath_exten)
 
-		img.save(os.path.join(self.serverbasedir, imgpath_serv))
-		img2.save(os.path.join(self.serverbasedir, imgpath_serv2))
+		self.img.save(os.path.join(self.serverbasedir, imgpath_serv))
+		self.img2.save(os.path.join(self.serverbasedir, imgpath_serv2))
 
 		return imgpath_serv, imgpath_serv2, suffix
-
-
 
 
 host, port = "", 5021
