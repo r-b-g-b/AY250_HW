@@ -7,30 +7,33 @@ import scikits.audiolab as al
 from scipy.interpolate import InterpolatedUnivariateSpline
 
 class pitchDetect(object):
-
+	'''
+	A class implementing simple pitch detection.
+	'''
 	def __init__(self, fpath):
 
 		print fpath
 
 		self.fpath = fpath
+		self.basedir, tmp = os.path.split(self.fpath)
+		self.title, _ = os.path.splitext(tmp)
+
 		self.load_aiff()
 
 		self._get_middle(frac=0.01)
 		self.axs = []
 
 		self.calc_periodogram()
-		self.detect('m1')
-		self.check()
+		self.detect(method='m1')
 
-		# self.acorr = acf(self.s2)
-		# self.rms = self.rms()
-
-	def detect(self, method):
-
+	def detect(self, method='m1'):
+		'''
+		Run the pitch detection. The one and only method available
+		just calculates a periodogram and gets the peak.
+		'''
 		if method=='m1':
 
 			ix_center = self.Sxx.argmax()
-			# ix = self.Sxx_freq[self.Sxx.argmax()]
 			ix_min = max([0, ix_center-10])
 			ix_max = min([ix_center+10, len(self.Sxx)])
 			Sxx2 = self.Sxx[ix_min:ix_max]
@@ -42,17 +45,17 @@ class pitchDetect(object):
 			y = spl(xs)
 
 			pitch = xs[y.argmax()]
-			# pitch = self.Sxx_freq[self.Sxx.argmax()]
+
 			self.plot_periodogram()
 			ax = self.axs[-1]
 
 			ax.axvline(pitch, color='r', ls='--')
 			
+			ax.get_figure().savefig(os.path.join(self.basedir, '%s_fig.png' % self.title))
+
 			self.pitch = pitch
 
 			print 'Detected pitch: %f\n' % pitch
-
-
 
 	def load_aiff(self):
 		'''
@@ -76,19 +79,25 @@ class pitchDetect(object):
 		self._maxfreq = 18000.
 
 	def _get_middle(self, frac=0.5):
-
+		'''
+		Returns the middle fraction of an array
+		'''
 		start = int((0.5-frac)*self.s.size)
 		stop = int((0.5+frac)*self.s.size)
 		self.s2 = self.s[start:stop]
 
 	def calc_autocorr(self):
-
+		'''
+		Calculate the autocorrelation of an array.
+		'''
 		nlags = int(self.fs / self._minfreq)
 		self.acorr = acf(self._windowed(self.s2), nlags=nlags)
 		self.acorr_freq = self.fs / np.arange(self.acorr.size)
 
 	def calc_periodogram(self):
-
+		'''
+		Calculate a periodogram of the sound.
+		'''
 		Sxx_freq, Sxx = periodogram(self.s2, fs=self.fs,
 			window='hamming', return_onesided=True)
 		ix = np.vstack((Sxx_freq>self._minfreq,
@@ -117,29 +126,12 @@ class pitchDetect(object):
 		self.S = S
 		self.S_freq = S_freq
 
-	def calc_cepstrum(self):
-
-		if not hasattr(self, 'S'):
-			self.calc_fft()
-
-		Slm = np.log(np.abs(self.S)) # log magnitude spectrum
-		Slm = Slm - Slm.mean()
-		C = np.fft.ifft(Slm)
-		C = C[:-1]
-		C_freq = np.fft.fftfreq(Slm.size, 1./self.fs)
-		C_freq = C_freq[:C.size]
-
-		self.C = C
-		self.C_freq = C_freq
-		self.Slm = Slm
-
 	def plot_periodogram(self):
 
 		fig, ax = plt.subplots()
 		ax.plot(self.Sxx_freq, self.Sxx)
-
+		ax.set_title(self.fpath)
 		self.axs.append(ax)
-
 
 	def plot_fft(self, ax=None):
 
@@ -172,6 +164,15 @@ class pitchDetect(object):
 
 		al.play(self._ramped(self.s2, self.fs), self.fs)
 
+	def playTone(self, freq):
+
+		t = np.arange(0, 0.5, 1./self.fs)
+		s = np.sin(2*np.pi*freq*t)
+
+		s_ramp = self._ramped(s, self.fs)
+
+		al.play(s_ramp, self.fs)
+
 	def check(self, freq=None):
 		if freq is None: freq = self.pitch
 		self.playSound()
@@ -190,15 +191,3 @@ class pitchDetect(object):
 		rel = att[::-1]
 		wind = np.concatenate((att, sus, rel))
 		return x*wind
-
-	def playTone(self, freq):
-
-		t = np.arange(0, 0.5, 1./self.fs)
-		s = np.sin(2*np.pi*freq*t)
-
-		s_ramp = self._ramped(s, self.fs)
-
-		al.play(s_ramp, self.fs)
-
-
-
