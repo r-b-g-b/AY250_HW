@@ -15,6 +15,7 @@ class Client(object):
 
 		self.server = server
 
+		self.imgformats = ['.bmp', '.gif', '.png', '.tif', '.tiff']
 		self.methods = server.system.listMethods()
 		self.methods = [m for m in self.methods if (not m.startswith('_')) and (not m.startswith('system.')) and (not m=='mess')]
 
@@ -24,7 +25,9 @@ class Client(object):
 		self.method = self._get_user_input(self.methods, prompt='Select method: ')
 
 		print 'Images...'
-		self.imgfpaths = glob(os.path.join(self.clientbasedir, '*.jpg'))
+		self.imgfpaths = []
+		for imgformat in self.imgformats: 
+			self.imgfpaths.extend(glob(os.path.join(self.clientbasedir, '*%s' % imgformat)))
 		if len(self.imgfpaths)==0:
 			print 'No images found!'
 			return
@@ -37,7 +40,15 @@ class Client(object):
 			print '\t%s\n' % self.server.system.methodHelp(self.method)
 			return
 
-		self.img = Image.open(self.imgpath)
+		# get rid of alpha channel if it exists
+		img = Image.open(self.imgpath)
+		imgarr = array(img)
+		if imgarr.shape[-1]>3:
+			print 'Removing alpha channel'
+			imgarr = imgarr[..., :3]
+			img = Image.fromarray(imgarr)
+		self.img = img
+
 		self.imgshape = list(self.img.size)
 		self.imgshape.extend([len(self.img.getbands())])
 		self.imglist = array(self.img).flatten(order='C').tolist()
@@ -75,11 +86,10 @@ class Client(object):
 			print '%u. %s' % (i+1, a)
 					# is it a number?
 		print
-		user_input = raw_input(prompt)
 		print '\n'
 		done = False
 		while not done:
-
+			user_input = raw_input(prompt)
 			try:
 				ix = int(user_input)
 			except:

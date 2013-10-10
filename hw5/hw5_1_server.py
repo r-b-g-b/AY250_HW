@@ -51,9 +51,11 @@ class messWithImage:
 		imgarr = array(self.img)
 		imgarr2 = imgarr.copy()
 		ncols, nrows = imgarr.shape[:2]
+		print imgarr.shape
 		for i in range(ncols):
 			for j in range(nrows):
 				imgarr2[i, j, :] = imgarr[i, j, permutation(range(3))]
+
 		self.img2 = Image.fromarray(imgarr2)
 
 	def square(self):
@@ -98,15 +100,15 @@ class messWithImage:
 	def mess(self, imglist, imgshape, imgpath, method):
 		'''
 		'''
-		print 'Server applying %s' % method
-		self.imglist = imglist
-		self.imgshape = imgshape
+		print 'Applying %s' % method
+		self.imglist = imglist 
+		self.imgshape = [imgshape[1], imgshape[0], imgshape[2]] # no f-ing idea why you need to do this
 		self.imgpath = os.path.split(imgpath)[1] # take just the relative path
-		self.img = Image.fromarray(array(imglist).astype(uint8).reshape(imgshape, order='C'))
+		self.img = Image.fromarray(array(imglist).astype(uint8).reshape(self.imgshape, order='C'))
 		self.img2 = self.img.copy()
 		self.method = method
 
-		if (method in self.require_RGB) and (not len(imgshape)==3):
+		if (method in self.require_RGB) and (not len(self.imgshape)==3):
 			print 'Image must be RGB format.'
 			return [None]*3
 
@@ -115,7 +117,7 @@ class messWithImage:
 
 		outpath, outpath2, suffix = self._saveImages()
 
-		imgshape2 = list(self.img2.size)
+		imgshape2 = list(self.img2.size)[::-1] # no f-ing idea why you need to do this
 		imgshape2.extend([len(self.img2.getbands())])
 		return array(self.img2).flatten().tolist(), imgshape2, suffix
 
