@@ -2,7 +2,7 @@ import sqlite3
 import pandas as pd
 from collections import OrderedDict
 import urllib2
-
+import numpy as np
 def initialize_airports():
 	# open connection
 	connection = sqlite3.connect('airports.db')
@@ -161,16 +161,9 @@ def add_weatherdata(connection):
 	'INTEGER',	'INTEGER',	'INTEGER',	'INTEGER',	'INTEGER',
 	'TEXT',	'INTEGER',	'TEXT',	'INTEGER']
 
-	columns = list(['id', 'ICAO'])
-	columns.extend(cols)
-	dtype_dict = OrderedDict(zip(columns, dtypes))
-	dtypes = ', '.join(['%s %s' % (k, v) for k, v in dtype_dict.iteritems()])
-
-	cmd = """CREATE TABLE weatherdata (%s)""" % dtypes
-	cursor.execute(cmd)
-	connection.commit()
-
+	first=True
 	for icaocode in icaocodes: # airport loop
+		print icaocode
 		for yr in years: # year loop
 			for mo in months: # month loop
 
@@ -180,8 +173,19 @@ def add_weatherdata(connection):
 				# parse into header and data
 				cols, x = parse_wunderground(http)
 
+				if first:
+						columns = list(['id', 'ICAO'])
+						columns.extend(cols)
+						dtype_dict = OrderedDict(zip(columns, dtypes))
+						dtypes = ', '.join(['%s %s' % (k, v) for k, v in dtype_dict.iteritems()])
+
+						cmd = """CREATE TABLE weatherdata (%s)""" % dtypes
+						cursor.execute(cmd)
+						connection.commit()
+						first=False
+
 				for x_ in x: # for each day's data
-					values = list([icaocode]) # start with the icao code
+					values = list([str(icaocode)]) # start with the icao code
 					values.extend(x_) # append weather data
 					cmd = """INSERT INTO weatherdata (%s) 
 					VALUES %s""" % (', '.join(dtype_dict.keys()[1:]), str(tuple(values)))
@@ -191,11 +195,14 @@ def add_weatherdata(connection):
 
 	return connection
 
-def run():
-	connection = initialize_airports()
-	connection = add_topairports(connection)
-	connection = add_ICAO_airports(connection)
-	connection = join_top_and_icao(connection)
-	connection = add_weatherdata(connection)
+# def run():
+connection = initialize_airports()
+connection = add_topairports(connection)
+connection = add_ICAO_airports(connection)
+connection = join_top_and_icao(connection)
+connection = add_weatherdata(connection)
+
+connection.commit()
+connection.close()
 
 
