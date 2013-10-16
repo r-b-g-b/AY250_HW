@@ -3,6 +3,100 @@ import pandas as pd
 from collections import OrderedDict
 import urllib2
 import numpy as np
+
+
+def run():
+	'''
+	Calculates correlation coefficients for each pair of top airports
+	'''
+	connection = sqlite3.connect('airports.db')
+	cursor = connection.cursor()
+
+	cmd = """
+		SELECT ICAO
+		FROM mytable
+	"""
+	cursor.execute(cmd)
+	icaos, = zip(*cursor.fetchall())
+
+	nairports = len(icaos)
+	lags = [3]
+	nlags = len(lags)
+	C_temp = np.empty((nairports, nairports, nlags))
+	C_cloud = np.empty((nairports, nairports, nlags))
+
+	# run for all pairs of locations
+	for i in range(len(icaos)):
+		for j in range(len(icaos)):
+
+			icao1 = icaos[i]
+			icao2 = icaos[j]
+
+			# get weather data, lat/lon for the two locations
+			datestr1,temp1,cloud1 = get_weatherdata(connection, icao1)
+			lat1, lon1 = get_latlon(connection, icao1)
+			datestr2,temp2,cloud2 = get_weatherdata(connection, icao2)
+			lat2, lon2 = get_latlon(connection, icao2)
+
+			# remove missing entries
+			dtemp1 = np.diff(clean_entry(temp1))
+			dtemp2 = np.diff(clean_entry(temp2))
+			dcloud1 = np.diff(clean_entry(cloud1))
+			dcloud2 = np.diff(clean_entry(cloud2))
+
+			for k, lag in enumerate(lags): # repeat for each lag
+
+				# how does city 2 predict city 1
+				C_temp[i, j, k] = run_correlation(dtemp1, dtemp2, lag)
+				C_cloud[i, j, k] = run_correlation(dcloud1, dcloud2, lag)
+
+	np.savez('C2.npz', C_temp=C_temp, C_cloud=C_cloud, ICAOs=icaos)
+
+
+def clean_entry(x):
+	x2 = np.empty(len(x), dtype=np.float32)
+	for i, v in enumerate(x):
+		try:
+			x2[i] = np.float32(v)
+		except ValueError:
+			x2[i] = np.nan
+	return x2
+
+
+def run_correlation(x1, x2, lag):
+
+	# how does city 2 predict city 1
+
+	# get rid of missing entries
+	X = zip(x1[lag:], x2[:-lag])
+	y1, y2 = zip(*[(i, j) for i, j in X if not np.isnan(i) and not np.isnan(j)])
+	c = np.corrcoef(y1, y2)
+
+	return c[0, 1]
+
+def get_latlon(connection, icao):
+	cursor = connection.cursor()
+	cmd = """
+	SELECT latitude_deg,
+		longitude_deg
+	FROM mytable
+	WHERE ident='%s'
+	""" % icao
+	cursor.execute(cmd)
+	return cursor.fetchall()[0]
+
+def get_weatherdata(connection, icao):
+	'''
+	return the max temp, cloud cover, lat and long for one station
+	'''
+	cursor = connection.cursor()
+	cmd = """SELECT EST, Max_TemperatureF, CloudCover FROM weatherdata WHERE ICAO='%s';
+	""" % icao
+
+	cursor.execute(cmd)
+	return zip(*cursor.fetchall())
+
+
 def initialize_airports():
 	# open connection
 	connection = sqlite3.connect('airports.db')
@@ -195,14 +289,15 @@ def add_weatherdata(connection):
 
 	return connection
 
-# def run():
-connection = initialize_airports()
-connection = add_topairports(connection)
-connection = add_ICAO_airports(connection)
-connection = join_top_and_icao(connection)
-connection = add_weatherdata(connection)
+def build_database():
+	
+	connection = initialize_airports()
+	connection = add_topairports(connection)
+	connection = add_ICAO_airports(connection)
+	connection = join_top_and_icao(connection)
+	connection = add_weatherdata(connection)
 
-connection.commit()
-connection.close()
+	connection.commit()
+	connection.close()
 
 
