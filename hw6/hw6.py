@@ -143,13 +143,17 @@ def parse_wunderground(http):
 
 def add_weatherdata(connection):
 	
+	cursor = connection.cursor()
 
+	# get icao codes
 	cursor.execute('SELECT icao FROM mytable')
 
 	icaocodes, = zip(*cursor.fetchall())
+	
 	years = np.arange(2008, 2014)
 	months = np.arange(1, 13)
 
+	# create dtype for weatherdata table
 	dtypes = ['INTEGER PRIMARY KEY AUTOINCREMENT',
 	'TEXT',	'DATE',	'INTEGER',	'INTEGER',	'INTEGER',
 	'INTEGER',	'INTEGER',	'INTEGER',	'INTEGER',	'INTEGER',
@@ -166,24 +170,32 @@ def add_weatherdata(connection):
 	cursor.execute(cmd)
 	connection.commit()
 
-	for icaocode in icaocodes
-		for yr in years:
-			for mo in months:
+	for icaocode in icaocodes: # airport loop
+		for yr in years: # year loop
+			for mo in months: # month loop
+
+				# load http
 				url = 'http://www.wunderground.com/history/airport/%s/%i/%i/1/MonthlyHistory.html?format=1' % (icaocode, yr, mo)
 				http = urllib2.urlopen(url).read()
+				# parse into header and data
 				cols, x = parse_wunderground(http)
-				for x_ in x:
-					values = list([icaocode])
-					values.extend(x_)
+
+				for x_ in x: # for each day's data
+					values = list([icaocode]) # start with the icao code
+					values.extend(x_) # append weather data
 					cmd = """INSERT INTO weatherdata (%s) 
 					VALUES %s""" % (', '.join(dtype_dict.keys()[1:]), str(tuple(values)))
 					cursor.execute(cmd)
+
+	connection.commit()
+
+	return connection
 
 def run():
 	connection = initialize_airports()
 	connection = add_topairports(connection)
 	connection = add_ICAO_airports(connection)
 	connection = join_top_and_icao(connection)
-
+	connection = add_weatherdata(connection)
 
 
