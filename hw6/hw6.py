@@ -4,9 +4,40 @@ import math
 from collections import OrderedDict
 import urllib2
 import numpy as np
+from matplotlib import pyplot as plt
 
 def build_database():
 	
+	'''builds the airports.db database containing the tables
+		correlations
+			code1: ICAO code for city "lag" days ahead 
+			code2: ICAO code for city "lag" days behind
+			dtemp: correlation for change in max temperature
+			dcloud: correlation for change in cloud cover
+			lag: city 1 is this many days ahead of city 2
+
+		icao (from ICAO_airports.csv)
+			ident
+			type
+			name
+			latitude_deg
+			longitude_deg
+			elevation_ft
+			continent
+			iso_country
+			iso_regionmunicipality TEXT, scheduled_service TEXT, gps_code TEXT, iata_code TEXT, local_code TEXT, home_link TEXT, wikipedia_link TEXT, keywords TEXT);
+		
+		mytable
+			combination of topairports and icao data to get names of top 50 stations and
+			latitude/longitude
+
+		weatherdata
+			a table of data aggregated from wunderground for the 50 airports in topairports
+			I use the columns Max_TemperatureF and CloudCover
+
+		topairports
+			the top 50 airports'''
+
 	connection = sqlite3.connect('airports.db')
 	connection = add_topairports(connection)
 	connection = add_ICAO_airports(connection)
@@ -16,13 +47,6 @@ def build_database():
 
 	connection.commit()
 	connection.close()
-
-
-def plot_all_by_latlon(connection):
-	'''
-	Plot the correlations for all of the city pairs by latitude and longitude
-	'''
-
 
 
 def plot_all_by_distance(connection):
@@ -96,6 +120,9 @@ def plot_top10_by_latlon(connection):
 		axs[0, 1].set_title('Correlation for $\Delta$ %s by longitude' % measure)
 		axs[-1, 1].set_xlabel('Difference in longitude')
 
+	plt.draw()
+	plt.show()
+
 def get_top10_by_latlon(connection, measure, lag):
 	'''
 	Returns the top 10 for a particular measure and delay
@@ -134,14 +161,19 @@ def plot_top10_by_dist(connection):
 	'''
 	measures = ['dtemp', 'dcloud']
 	lags = [1, 3, 7]
+
 	fig, axs = plt.subplots(3, 2)
-	for i, meaure in enumerate(measures):
+	for i, measure in enumerate(measures):
 		for j, lag in enumerate(lags):
-			x, y = get_top10_by_latlon(connection, measure, lag)
+			x, y = get_top10_by_dist(connection, measure, lag)
 			axs[j, i].plot(x, y, marker='.')
 
 	axs[0, 0].set_title('Correlation for $\Delta$ in max temp')
+	axs[-1, 0].set_xlabel('Distance (km)')
 	axs[0, 1].set_title('Correlation for $\Delta$ in cloud cover')
+	axs[-1, 1].set_xlabel('Distance (km)')
+	plt.draw()
+	plt.show()
 
 
 def get_top10_by_dist(connection, measure, lag):
@@ -230,7 +262,9 @@ def calculate_correlations(connection):
 	# np.savez('C2.npz', C_temp=C_temp, C_cloud=C_cloud, ICAOs=icaos)
 
 def get_airportcodes(connection):
-	
+	'''
+	Return the airport codes for the top 50 airports
+	'''
 	cursor = connection.cursor()
 
 	cmd = """
@@ -242,6 +276,9 @@ def get_airportcodes(connection):
 	return icaos
 
 def clean_entry(x):
+	'''
+	takes a list, x, with missing values and returns a numpy array with nans in place of the missing values
+	'''
 	x2 = np.empty(len(x), dtype=np.float32)
 	for i, v in enumerate(x):
 		try:
@@ -251,6 +288,9 @@ def clean_entry(x):
 	return x2
 
 def run_correlation(x1, x2, lag):
+	'''
+	calculate the correlation coefficient for one pair of cities at one lag
+	'''
 
 	# how does city 2 predict city 1
 
@@ -289,6 +329,9 @@ def get_weatherdata(connection, icao):
 
 
 def add_topairports(connection):
+	'''
+	Creates a table "topairports" from top_airports.csv into the database linked to connection
+	'''
 
 	cursor = connection.cursor()
 	
@@ -320,7 +363,9 @@ def add_topairports(connection):
 	return connection
 
 def add_ICAO_airports(connection):
-
+	'''
+	Creates a table "icao" from ICAO_airports.csv into the database linked to connection.
+	'''
 	cursor = connection.cursor()
 
 	df2 = pd.read_csv('data/ICAO_airports.csv')
@@ -505,3 +550,8 @@ def distance_on_unit_sphere(lat1, long1, lat2, long2):
 	# Remember to multiply arc by the radius of the earth 
 	# in your favorite set of units to get length.
 	return arc
+
+def run():
+	connection = sqlite3.connect('airports.db')
+	plot_top10_by_dist(connection)
+	plot_top10_by_latlon(connection)
