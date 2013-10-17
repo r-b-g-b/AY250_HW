@@ -1,171 +1,198 @@
 import sqlite3
 import pandas as pd
+import math
 from collections import OrderedDict
 import urllib2
 import numpy as np
 
+def build_database():
+	
+	connection = sqlite3.connect('airports.db')
+	connection = add_topairports(connection)
+	connection = add_ICAO_airports(connection)
+	connection = join_top_and_icao(connection)
+	connection = add_weatherdata(connection)
+	connection = calculate_correlations(connection)
 
-def calc_latlon_offset():
-
-
-	icaos = get_airportcodes(connection)
-	nairports = len(icaos)
-
-	df = pd.DataFrame(columns=('code1', 'code2', 'dist', 'dlat', 'dlon'))
-
-	for i in range(nairports):
-		for j in range(i, nairports):
-			icao1 = icaos[i]
-			icao2 = icaos[j]
-			lat1, lon1 = get_latlon(connection, icao1)
-			lat2, lon2 = get_latlon(connection, icao2)
-			if i==j:
-				dist=0
-			else:
-				dist = np.abs(distance_on_unit_sphere(lat1, lon1, lat2, lon2)*6373)
-			dlat = lat2-lat1
-			dlon = lon2-lon1
-			df = df.append(dict(code1=icao1, code2=icao2, dist=dist, dlat=dlat, dlon=dlon), ignore_index=True)
-			if i!=j:
-				df = df.append(dict(code1=icao2, code2=icao1, dist=dist, dlat=-dlat, dlon=-dlon), ignore_index=True)
-
-	df['dlat_bin'] = pd.cut(df.dlat, bins=np.arange(-30, 35, 5))
-	df['dlon_bin'] = pd.cut(df.dlon, bins=np.arange(-100, 110, 10))
-
-	return df
+	connection.commit()
+	connection.close()
 
 
-def plot_by_distance(df):
+def plot_all_by_latlon(connection):
 	'''
-	Plots the correlations in the changes of temperature and cloud coverage
-	as a function of distance. The first point (distance=0) shows how a city's
-	weather predicts its own future weather.
+	Plot the correlations for all of the city pairs by latitude and longitude
 	'''
 
-	distbins = np.hstack((-1, np.arange(1, 10000, 500)))
-	ndists = len(distbins)-1
-	y_temp = np.zeros((ndists, 3))
-	y_cloud = np.zeros_like(y_temp)
 
+
+def plot_all_by_distance(connection):
+	'''
+	Plot the correlations for all of the city pairs by distance
+	'''
+
+	measures = ['dtemp', 'dcloud']
 	lags = [1, 3, 7]
-	for i in range(ndists):
-		ix = np.vstack((distbins[i]<df.dist, df.dist<distbins[i+1])).all(0)
-		if ix.sum()>0:
-			for k, lag in enumerate(lags):
-				y_temp[i, k] = np.mean(df.ix[ix]['temp_corr%i' % lag])
-				y_cloud[i, k] = np.mean(df.ix[ix]['cloud_corr%i' % lag])
 
-	fig, axs = plt.subplots(2, 1)
-	axs[0].plot(distbins[:-1], y_temp, marker='.')
-	axs[0].set_title('Max temperature')
-	axs[1].plot(distbins[:-1], y_cloud, marker='.')
-	axs[1].set_title('Cloud cover')
-	[a.legend(['%i days' % lag for lag in lags]) for a in axs]
-	axs[1].set_xlabel('Distance (km)')
-	axs[1].set_ylabel('Correlation coefficient')
-
-
-def plot_correlation_matrix(df):
-
-	latbins = np.arange(-30, 35, 5)
-	lonbins = np.arange(-100, 110, 10)
-	nlats = len(latbins)-1
-	nlons = len(lonbins)-1
+	fig, axs = plt.subplots(3, 2, sharex=True, sharey=True)
+	for i, measure in enumerate(measures):
+		for j, lag in enumerate(lags):
+			x, y = get_all_by_distance(connection, measure, lag)
 	
-	lags = [1, 3, 7]
-	nlags = len(lags)
-	cmat_temp = np.zeros((nlats, nlons, 3))
-	cmat_cloud = np.zeros_like(cmat_temp)
-	for i in range(nlats):
-		for j in range(nlons):
-			ix = np.vstack((latbins[i]<df.dlat, df.dlat<latbins[i+1],
-				lonbins[j]<df.dlon, df.dlon<lonbins[j+1])).all(0)
-			if ix.sum()>0:
-				for k, lag in enumerate(lags):
-					cmat_temp[i, j, k] = np.mean(df.ix[ix]['temp_corr%i' % lag])
-					cmat_cloud[i, j, k] = np.mean(df.ix[ix]['cloud_corr%i' % lag])
+			axs[j, i].plot(x, y, marker='.', label='Day %i' % lag)
+			axs[j, i].legend()
 
-	fig, axs = plt.subplots(nlags, 2)
-	fig.suptitle('Max temperature')
-	for i, lag in enumerate(lags):
-		axs[i, 0].imshow(cmat_temp[..., i],
-			interpolation='nearest',
-			extent=(lonbins[0], lonbins[-1], latbins[0], latbins[-1]),
-			vmin=-0.2, vmax=0.2,
-			aspect='auto')
-		axs[i, 0].set_title('Max temp %i day lag' % lag)
-		img = axs[i, 1].imshow(cmat_cloud[..., i],
-			interpolation='nearest',
-			extent=(lonbins[0], lonbins[-1], latbins[0], latbins[-1]),
-			vmin=-0.2, vmax=0.2,
-			aspect='auto')
-		axs[i, 1].set_title('Cloud cover %i day lag' % lag)
-	fig.tight_layout()
-	plt.colorbar(img, ax=axs[0,0])
+		axs[0, i].set_title(measure)
+	axs[-1, 0].set_xlabel('Distance (km)')
 
-def combine_latlon_weatherdata():
+def get_all_by_distance(connection, measure, lag):
 
-	df = calc_latlon_offset()
-
-	tmp = np.load('C.npz')
-	C_temp = tmp['C_temp']
-	C_cloud = tmp['C_cloud']
-	icaos = tmp['ICAOs']
-
-	temp_corr1 = []
-	temp_corr3 = []
-	temp_corr7 = []
-	cloud_corr1 = []
-	cloud_corr3 = []
-	cloud_corr7 = []
-	for ix, row in df.iterrows():
-		i = (icaos==row['code1']).nonzero()[0][0]
-		j = (icaos==row['code2']).nonzero()[0][0]
-		temp_corr1.append(C_temp[i, j, 0])
-		temp_corr3.append(C_temp[i, j, 1])
-		temp_corr7.append(C_temp[i, j, 2])
-		cloud_corr1.append(C_cloud[i, j, 0])
-		cloud_corr3.append(C_cloud[i, j, 1])
-		cloud_corr7.append(C_cloud[i, j, 2])
-
-	df['temp_corr1'] = temp_corr1
-	df['temp_corr3'] = temp_corr3
-	df['temp_corr7'] = temp_corr7
-	df['cloud_corr1'] = cloud_corr1
-	df['cloud_corr3'] = cloud_corr3
-	df['cloud_corr7'] = cloud_corr7
-
-	return df
-
-def get_airportcodes(connection):
-	
 	cursor = connection.cursor()
 
 	cmd = """
-		SELECT ICAO
-		FROM mytable
-	"""
-	cursor.execute(cmd)
-	icaos, = zip(*cursor.fetchall())
-	return icaos
+	SELECT code1, code2, %s
+	FROM correlations
+	WHERE lag=%i
+	ORDER BY %s DESC
+	"""% (measure, lag, measure)
 
-def calculate_correlations():
+	cursor.execute(cmd)
+	results = cursor.fetchall()
+	x = np.zeros(len(results))
+	y = np.zeros(len(results))
+	for i, (code1, code2, y_) in enumerate(results):
+		lat1, lon1 = get_latlon(connection, code1)
+		lat2, lon2 = get_latlon(connection, code2)
+		if code1==code2:
+			x[i] = 0
+		else:
+			x[i] = distance_on_unit_sphere(lat1, lon1, lat2, lon2)*6373.
+		y[i] = y_
+
+	distbins = np.hstack((-1, np.arange(1, 10000, 500)))
+	ymeans = np.zeros(len(distbins)-1)
+	for i in range(len(distbins)-1):
+		ix = np.vstack((distbins[i]<x, x<distbins[i+1])).all(0)
+		ymeans[i] = np.mean(y[ix])
+
+	return distbins[:-1], ymeans
+
+def plot_top10_by_latlon(connection):
+	'''
+	Plots the top 10 sorted by longitude
+	'''
+	measures = ['dtemp', 'dcloud']
+	lags = [1, 3, 7]
+	for i, measure in enumerate(measures):
+		print measure
+		fig, axs = plt.subplots(3, 2)
+		for j, lag in enumerate(lags):
+			print lag
+			xlat, ylat, xlon, ylon = get_top10_by_latlon(connection, measure, lag)
+			axs[j, 0].plot(xlat, ylat, marker='.')
+			axs[j, 1].plot(xlon, ylon, marker='.')
+
+		axs[0, 0].set_title('Correlation for $\Delta$ %s by latitude' % measure)
+		axs[-1, 0].set_xlabel('Difference in latitude')
+		axs[0, 1].set_title('Correlation for $\Delta$ %s by longitude' % measure)
+		axs[-1, 1].set_xlabel('Difference in longitude')
+
+def get_top10_by_latlon(connection, measure, lag):
+	'''
+	Returns the top 10 for a particular measure and delay
+	sorted by latitude and longitude
+	'''
+	cursor = connection.cursor()
+
+	cmd = """
+	SELECT code1, code2, %s
+	FROM correlations
+	WHERE lag=%i
+	ORDER BY %s DESC
+	"""% (measure, lag, measure)
+
+	cursor.execute(cmd)
+	results = cursor.fetchall()
+	xlat = np.zeros(10); xlon = np.zeros(10)
+	y = np.zeros(10)
+	for i, (code1, code2, y_) in enumerate(results[:10]):
+		lat1, lon1 = get_latlon(connection, code1)
+		lat2, lon2 = get_latlon(connection, code2)
+		dlat = lat2-lat1
+		dlon = lon2-lon1
+		xlat[i] = dlat
+		xlon[i] = dlon
+		y[i] = y_
+
+	ixlat = xlat.argsort()[::-1]
+	ixlon = xlon.argsort()[::-1]
+
+	return xlat[ixlat], y[ixlat], xlon[ixlon], y[ixlon]
+
+def plot_top10_by_dist(connection):
+	'''
+	Plots the top 10 sorted by distance
+	'''
+	measures = ['dtemp', 'dcloud']
+	lags = [1, 3, 7]
+	fig, axs = plt.subplots(3, 2)
+	for i, meaure in enumerate(measures):
+		for j, lag in enumerate(lags):
+			x, y = get_top10_by_latlon(connection, measure, lag)
+			axs[j, i].plot(x, y, marker='.')
+
+	axs[0, 0].set_title('Correlation for $\Delta$ in max temp')
+	axs[0, 1].set_title('Correlation for $\Delta$ in cloud cover')
+
+
+def get_top10_by_dist(connection, measure, lag):
+	'''
+	Returns the top 10 for a particular measure and delay sorted by distance
+	'''
+	cursor = connection.cursor()
+
+	cmd = """
+	SELECT code1, code2, %s
+	FROM correlations
+	WHERE lag=%i
+	ORDER BY %s DESC
+	"""% (measure, lag, measure)
+
+	cursor.execute(cmd)
+	results = cursor.fetchall()
+	x = np.zeros(10)
+	y = np.zeros(10)
+	for i, (code1, code2, y_) in enumerate(results[:10]):
+		lat1, lon1 = get_latlon(connection, code1)
+		lat2, lon2 = get_latlon(connection, code2)
+		x[i] = distance_on_unit_sphere(lat1, lon1, lat2, lon2)*6373.
+		y[i] = y_
+
+	ix = x.argsort()[::-1]
+
+	return x[ix], y[ix]
+
+def calculate_correlations(connection):
 	'''
 	Calculates correlation coefficients in changes of 
 	max temperature and cloud cover for each pair of
 	top airports.
 	'''
 
-	connection = sqlite3.connect('airports.db')
 	cursor = connection.cursor()
-
 	icaos = get_airportcodes(connection)
+	lags = [1, 3, 7]
 
-	nairports = len(icaos)
-	lags = [1, 3, 5]
-	nlags = len(lags)
-	C_temp = np.empty((nairports, nairports, nlags))
-	C_cloud = np.empty((nairports, nairports, nlags))
+	cmd = """
+	CREATE TABLE correlations
+	(id INTEGER PRIMARY KEY AUTOINCREMENT,
+	code1 TEXT,
+	code2 TEXT,
+	dtemp FLOAT,
+	dcloud FLOAT,
+	lag INTEGER)
+	"""
+	cursor.execute(cmd)
+	connection.commit()
 
 	# run for all pairs of locations
 	for i in range(len(icaos)):
@@ -184,14 +211,35 @@ def calculate_correlations():
 			dcloud1 = np.diff(clean_entry(cloud1))
 			dcloud2 = np.diff(clean_entry(cloud2))
 
-			for k, lag in enumerate(lags): # repeat for each lag
+			for lag in lags: # repeat for each lag
+
 
 				# how does city 2 predict city 1
-				C_temp[i, j, k] = run_correlation(dtemp1, dtemp2, lag)
-				C_cloud[i, j, k] = run_correlation(dcloud1, dcloud2, lag)
+				ctemp = run_correlation(dtemp1, dtemp2, lag)
+				ccloud = run_correlation(dcloud1, dcloud2, lag)
+				cmd = """
+				INSERT INTO correlations
+				(code1, code2, dtemp, dcloud, lag)
+				VALUES
+				('%s', '%s', '%f', '%f', %i)
+				""" % (icao1, icao2, ctemp, ccloud, lag)
 
-	np.savez('C2.npz', C_temp=C_temp, C_cloud=C_cloud, ICAOs=icaos)
+				cursor.execute(cmd)
 
+	return connection
+	# np.savez('C2.npz', C_temp=C_temp, C_cloud=C_cloud, ICAOs=icaos)
+
+def get_airportcodes(connection):
+	
+	cursor = connection.cursor()
+
+	cmd = """
+		SELECT ICAO
+		FROM mytable
+	"""
+	cursor.execute(cmd)
+	icaos, = zip(*cursor.fetchall())
+	return icaos
 
 def clean_entry(x):
 	x2 = np.empty(len(x), dtype=np.float32)
@@ -201,7 +249,6 @@ def clean_entry(x):
 		except ValueError:
 			x2[i] = np.nan
 	return x2
-
 
 def run_correlation(x1, x2, lag):
 
@@ -215,6 +262,10 @@ def run_correlation(x1, x2, lag):
 	return c[0, 1]
 
 def get_latlon(connection, icao):
+	'''
+	Returns the latitude and longitude of a city given its ICAO code
+	'''
+
 	cursor = connection.cursor()
 	cmd = """
 	SELECT latitude_deg,
@@ -227,7 +278,7 @@ def get_latlon(connection, icao):
 
 def get_weatherdata(connection, icao):
 	'''
-	return the max temp, cloud cover, lat and long for one station
+	Return the max temp, cloud cover given a station's ICAO code
 	'''
 	cursor = connection.cursor()
 	cmd = """SELECT EST, Max_TemperatureF, CloudCover FROM weatherdata WHERE ICAO='%s';
@@ -236,12 +287,6 @@ def get_weatherdata(connection, icao):
 	cursor.execute(cmd)
 	return zip(*cursor.fetchall())
 
-
-def initialize_airports():
-	# open connection
-	connection = sqlite3.connect('airports.db')
-
-	return connection
 
 def add_topairports(connection):
 
@@ -308,14 +353,12 @@ def add_ICAO_airports(connection):
 
 	return connection
 
-
 def print_tables(connection):
 
 	cursor = connection.cursor()
 	cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
 	tables, = zip(*cursor.fetchall())
 	return tables
-
 
 def join_top_and_icao(connection):
 
@@ -429,12 +472,11 @@ def add_weatherdata(connection):
 
 	return connection
 
-
-import math
-
 def distance_on_unit_sphere(lat1, long1, lat2, long2):
 	'''
+	Code thanks to
 	http://www.johndcook.com/python_longitude_latitude.html
+		'This code is in the public domain. Do whatever you want with it, no strings attached.'
 	'''
 	# Convert latitude and longitude to 
 	# spherical coordinates in radians.
@@ -463,18 +505,3 @@ def distance_on_unit_sphere(lat1, long1, lat2, long2):
 	# Remember to multiply arc by the radius of the earth 
 	# in your favorite set of units to get length.
 	return arc
-
-
-
-def build_database():
-	
-	connection = initialize_airports()
-	connection = add_topairports(connection)
-	connection = add_ICAO_airports(connection)
-	connection = join_top_and_icao(connection)
-	connection = add_weatherdata(connection)
-
-	connection.commit()
-	connection.close()
-
-
