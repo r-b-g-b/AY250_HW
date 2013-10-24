@@ -1,6 +1,6 @@
 I thought the easiest way to present this assignment was as an iPython notebook. To open the notebook, type
 
->>> ipython notebook --pylab=inline
+> ipython notebook --pylab=inline
 
 in the terminal.
 
