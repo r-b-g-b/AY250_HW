@@ -1,9 +1,12 @@
 import pandas as pd
+from matplotlib import pyplot as plt
 from datetime import datetime
+import numpy as np
+from collections import Counter
 
 issues = pd.read_json('closed.json')
 issues = issues[~issues.id.duplicated()]
-# title, created_at, labels, closed_at, user, id
+
 #Transform the user values to be simply the 'login' string, so that the user
 #column contains only string usernames.
 df2 = pd.DataFrame(dict(title=issues['title'], created_at=issues['created_at'],
@@ -12,7 +15,6 @@ df2 = pd.DataFrame(dict(title=issues['title'], created_at=issues['created_at'],
 
 #2) Remove duplicate rows by id from the DataFrame you just created using the id
 #column's duplicated method.
-
 df2 = df2[~df2.id.duplicated()]
 
 # 5) Now construct appropriate time series and pandas functions to make the
@@ -21,12 +23,14 @@ df2 = df2[~df2.id.duplicated()]
 # - Number of issues created by month
 df2.set_index('created_at', inplace=True)
 count = df2.id.resample('M', how=len)
+fig, ax = plt.subplots()
 count.plot()
 
 # - Number of distinct users creating issues each month (hint: you can pass a
 #   function to resample's how argument, and there's nothing wrong with having
 #   string values in a TimeSeries)
 nunique = df2.user.resample('M', how=lambda x: len(np.unique(x)))
+fig, ax = plt.subplots()
 nunique.plot()
 
 # 6) Make a table and an accompanying plot illustrating:
@@ -40,6 +44,7 @@ duration = df2.closed_at-df2.index.values
 duration = pd.TimeSeries(duration.values.astype('timedelta64[D]').astype(int), index=duration.index)
 
 duration_by_month = duration.resample('M', how=(np.mean, len))
+fig, ax = plt.subplots()
 duration_by_month.plot()
 
 # 7) Make a DataFrame containing all the comments for all of the issues. You will
@@ -73,7 +78,6 @@ ncomments, chattiest, chattiest_pct, nusers = zip(*comments_table.values)
 comments_table = pd.DataFrame(dict(ncomments=ncomments, chattiest=chattiest, chattiest_pct=chattiest_pct, nusers=nusers),
 		index=comments_table.index)
 
-from collections import Counter
 def temp(df):
 	ncomments = len(df)
 	(chattiestuser, chattiestnum), = Counter(df.author).most_common(1)
@@ -113,6 +117,5 @@ gp_labels.duration.apply(np.mean)
 
 gp_labels_mo = issues_labels.groupby(('labels_y', 'month'))
 results = gp_labels_mo.duration.apply(np.mean)
-fig, ax = plt.subplots()
-results.stack('month')
-results.unstack('labels_y')[['Enhancement', 'Bug']].plot()
+fig, ax = plt.subplots();
+results.unstack('labels_y')[['Enhancement', 'Bug']].plot();
