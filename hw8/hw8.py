@@ -2,8 +2,12 @@ import matplotlib
 matplotlib.use('TkAgg')
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2TkAgg
+from matplotlib import pyplot as plt
+
 from Tkinter import *
-import Image, ImageTk
+import Image
+from StringIO import StringIO
+import numpy as np
 import urllib2
 import json
 
@@ -29,48 +33,84 @@ def submitQuery():
 	buff = StringIO()
 	buff.write(urllib2.urlopen(newimgurl).read())
 	buff.seek(0)
-	im = Image.open(buff).
+	img = np.array(Image.open(buff))
 
-	with open('tmp', 'wb') as f:
-		f.write(urllib2.urlopen(newimgurl).read())
+	ax.imshow(img)
+	fig.canvas.draw()
+	# with open('tmp', 'wb') as f:
+	# 	f.write(urllib2.urlopen(newimgurl).read())
 
 	imgurl.set(newimgurl)
 
+def weird(img):
+
+	normdist = norm(0, 1)
+	shift_x = np.int32(normdist.cdf(np.linspace(-2, 2, img.shape[1]))*img.shape[1])
+	shift_y = np.int32(normdist.cdf(np.linspace(-2, 2, img.shape[0]))*img.shape[0])
+
+	def shift_func(coords):
+
+		return (shift_y[coords[0]], shift_x[coords[1]])
+
+	img = ndi.geometric_transform(img, shift_func)
+	ax.imshow(img)
+	fig.canvas.draw()
+	return img
+
+
+def destroy():
+	root.quit()
+	root.destroy()
 
 root = Tk()
 root.wm_title("Image search")
 	
-# fig = Figure(figsize=(5,4), dpi=100)
-# ax = fig.add_subplot(111)
-
+fig = Figure(figsize=(5,4), dpi=100)
+ax = fig.add_subplot(111)
+ax.tick_params(\
+    which='both',
+    bottom='off',
+    top='off',
+    left='off',
+    right='off',
+    labelbottom='off',
+    labelleft='off')
 
 canvas = FigureCanvasTkAgg(fig, master=root)
 canvas.show()
 
-# add text fields
+# add query field
 query = StringVar(root)
 query.set('...Enter search query...')
 querylabel = Entry(root, textvariable=query)
 
+# add image url field
 imgurl = StringVar(root)
 imgurl.set("...Image URL...")
 imgurllabel = Label(root, textvariable=imgurl)
 
+# add submit button
 submit = Button(root, text="Submit", command=submitQuery)
+# add quit button
+quit = Button(root, text='Quit', command=destroy)
 
-img = Image.open('tmp')
-tkimg = ImageTk.PhotoImage(img)
-imglabel = Label(root, image=tkimg)
+# add manipulation buttons
+manips = ['Weird', 'Blur', 'Sharpen']
+weirdbutton = Button(root, text='Weird', command=weird)
+blurbutton = Button(root, text='Blur', command=blur)
 
+# pack everything
 querylabel.pack(side=TOP)
 submit.pack(side=TOP)
 imgurllabel.pack(side=TOP)
 canvas.get_tk_widget().pack(side=LEFT, expand=1)
 canvas._tkcanvas.pack(side=TOP, fill=BOTH, expand=1)
-
+weirdbutton.pack(side=BOTTOM)
+quit.pack(side=BOTTOM)
 # manips.pack(side=BOTTOM)
 
-manips = ['Refresh', 'Blur', 'Sharpen']
-
 root.mainloop()
+
+
+
 
