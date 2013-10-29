@@ -4,16 +4,14 @@ from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2TkAgg
 from matplotlib import pyplot as plt
 
-from scipy import ndimage as ndi
-from skimage import transform
-from scipy.stats import norm
-
 from Tkinter import *
+
 import Image
+from skimage import transform, filter
+from scipy import signal as sig
 from StringIO import StringIO
 import numpy as np
-import urllib2
-import json
+import urllib2, json
 
 class imageManip(object):
 
@@ -53,10 +51,9 @@ class imageManip(object):
 		quit = Button(self.root, text='Quit', command=self.destroy)
 
 		# add manipulation buttons
-		manips = ['Fish', 'Blur', 'Sharpen']
-		fishbutton = Button(self.root, text='Fish', command=self.fish)
 		blurbutton = Button(self.root, text='Blur', command=self.blur)
 		flipbutton = Button(self.root, text='Flip', command=self.flip)
+		fishbutton = Button(self.root, text='Fish', command=self.fish)
 
 		# pack everything
 		querylabel.pack(side=TOP)
@@ -64,9 +61,9 @@ class imageManip(object):
 		imgurllabel.pack(side=TOP)
 		canvas.get_tk_widget().pack(side=LEFT, expand=1)
 		canvas._tkcanvas.pack(side=TOP, fill=BOTH, expand=1)
+		blurbutton.pack(side=LEFT)
 		flipbutton.pack(side=LEFT)
 		fishbutton.pack(side=LEFT)
-		blurbutton.pack(side=LEFT)
 		quit.pack(side=RIGHT)
 		# manips.pack(side=BOTTOM)
 
@@ -101,8 +98,25 @@ class imageManip(object):
 		self.imgurl.set(newimgurl)
 
 
-	def fish(self):
+	def blur(self):
+		'''
+		implements a simple mean blur
+		'''
+		wind = np.ones((10., 10.), dtype=float)
+		wind = wind/wind.sum()
+		if len(self.img.shape)>2:
+			for i in xrange(self.img.shape[-1]):
+				self.img[..., i] = sig.convolve2d(self.img[..., i], wind, 'same')
+		else:
+			self.img = sig.convolve2d(self.img, np.ones((10, 10)), 'same')
 
+		self.refreshimg()
+
+
+	def fish(self):
+		'''
+		expands the image to produce a fisheye effect
+		'''
 		def fisheye(xy):
 			center = np.mean(xy, axis=0)
 			xc, yc = (xy - center).T
@@ -121,13 +135,16 @@ class imageManip(object):
 		self.refreshimg()
 
 	def flip(self):
+		'''
+		flips the image over its horizontal axis
+		'''
 		self.img = self.img[::-1, ...]
 		self.refreshimg()
 
-	def blur(self):
-		pass
-
 	def refreshimg(self):
+		'''
+		redraws the image
+		'''
 		if len(self.img.shape)==2:
 			self.ax.imshow(self.img, cmap='gray')
 		else:
@@ -136,6 +153,9 @@ class imageManip(object):
 
 
 	def destroy(self):
+		'''
+		stop the mainloop and close the window
+		'''
 		self.root.quit()
 		self.root.destroy()
 
