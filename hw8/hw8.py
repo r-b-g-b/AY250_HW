@@ -4,6 +4,10 @@ from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2TkAgg
 from matplotlib import pyplot as plt
 
+from scipy import ndimage as ndi
+from skimage import transform
+from scipy.stats import norm
+
 from Tkinter import *
 import Image
 from StringIO import StringIO
@@ -11,106 +15,130 @@ import numpy as np
 import urllib2
 import json
 
+class imageManip(object):
 
-def submitQuery():
-	'''
-	Sets imgurl to the first result of a Google image search for the string
-	stored in query
-	'''
+	def __init__(self):
 
-	query2 = urllib2.quote(query.get())
-	queryurl = 'https://ajax.googleapis.com/ajax/services/search/images?v=1.0&q=%s'
-	request = urllib2.Request(queryurl%query2, None, {'Referer': 'http://www.github.com/gibbonorbiter'})
-	response = urllib2.urlopen(request)
+		self.root = Tk()
+		self.root.wm_title("Image search")
+			
+		self.fig = Figure(figsize=(5,4), dpi=100)
+		self.ax = self.fig.add_subplot(111)
+		self.ax.tick_params(\
+		    which='both',
+		    bottom='off',
+		    top='off',
+		    left='off',
+		    right='off',
+		    labelbottom='off',
+		    labelleft='off')
 
-	results = json.load(response)
-	responseData = results['responseData']['results']
-	if len(responseData)==0:
-		print results
-		return
+		canvas = FigureCanvasTkAgg(self.fig, master=self.root)
+		canvas.show()
 
-	newimgurl = results['responseData']['results'][0]['url']
-	buff = StringIO()
-	buff.write(urllib2.urlopen(newimgurl).read())
-	buff.seek(0)
-	img = np.array(Image.open(buff))
+		# add query field
+		self.query = StringVar(self.root)
+		self.query.set('...Enter search query...')
+		querylabel = Entry(self.root, textvariable=self.query)
+		self.queryurl = 'https://ajax.googleapis.com/ajax/services/search/images?v=1.0&q=%s'
 
-	ax.imshow(img)
-	fig.canvas.draw()
-	# with open('tmp', 'wb') as f:
-	# 	f.write(urllib2.urlopen(newimgurl).read())
+		# add image url field
+		self.imgurl = StringVar(self.root)
+		self.imgurl.set("...Image URL...")
+		imgurllabel = Label(self.root, textvariable=self.imgurl)
 
-	imgurl.set(newimgurl)
+		# add submit button
+		submit = Button(self.root, text="Submit", command=self.submitQuery)
+		# add quit button
+		quit = Button(self.root, text='Quit', command=self.destroy)
 
-def weird(img):
+		# add manipulation buttons
+		manips = ['Fish', 'Blur', 'Sharpen']
+		fishbutton = Button(self.root, text='Fish', command=self.fish)
+		blurbutton = Button(self.root, text='Blur', command=self.blur)
+		flipbutton = Button(self.root, text='Flip', command=self.flip)
 
-	normdist = norm(0, 1)
-	shift_x = np.int32(normdist.cdf(np.linspace(-2, 2, img.shape[1]))*img.shape[1])
-	shift_y = np.int32(normdist.cdf(np.linspace(-2, 2, img.shape[0]))*img.shape[0])
-
-	def shift_func(coords):
-
-		return (shift_y[coords[0]], shift_x[coords[1]])
-
-	img = ndi.geometric_transform(img, shift_func)
-	ax.imshow(img)
-	fig.canvas.draw()
-	return img
-
-
-def destroy():
-	root.quit()
-	root.destroy()
-
-root = Tk()
-root.wm_title("Image search")
-	
-fig = Figure(figsize=(5,4), dpi=100)
-ax = fig.add_subplot(111)
-ax.tick_params(\
-    which='both',
-    bottom='off',
-    top='off',
-    left='off',
-    right='off',
-    labelbottom='off',
-    labelleft='off')
-
-canvas = FigureCanvasTkAgg(fig, master=root)
-canvas.show()
-
-# add query field
-query = StringVar(root)
-query.set('...Enter search query...')
-querylabel = Entry(root, textvariable=query)
-
-# add image url field
-imgurl = StringVar(root)
-imgurl.set("...Image URL...")
-imgurllabel = Label(root, textvariable=imgurl)
-
-# add submit button
-submit = Button(root, text="Submit", command=submitQuery)
-# add quit button
-quit = Button(root, text='Quit', command=destroy)
-
-# add manipulation buttons
-manips = ['Weird', 'Blur', 'Sharpen']
-weirdbutton = Button(root, text='Weird', command=weird)
-blurbutton = Button(root, text='Blur', command=blur)
-
-# pack everything
-querylabel.pack(side=TOP)
-submit.pack(side=TOP)
-imgurllabel.pack(side=TOP)
-canvas.get_tk_widget().pack(side=LEFT, expand=1)
-canvas._tkcanvas.pack(side=TOP, fill=BOTH, expand=1)
-weirdbutton.pack(side=BOTTOM)
-quit.pack(side=BOTTOM)
-# manips.pack(side=BOTTOM)
-
-root.mainloop()
+		# pack everything
+		querylabel.pack(side=TOP)
+		submit.pack(side=TOP)
+		imgurllabel.pack(side=TOP)
+		canvas.get_tk_widget().pack(side=LEFT, expand=1)
+		canvas._tkcanvas.pack(side=TOP, fill=BOTH, expand=1)
+		flipbutton.pack(side=LEFT)
+		fishbutton.pack(side=LEFT)
+		blurbutton.pack(side=LEFT)
+		quit.pack(side=RIGHT)
+		# manips.pack(side=BOTTOM)
 
 
+	def submitQuery(self):
+		'''
+		Sets imgurl to the first result of a Google image search for the string
+		stored in query
+		'''
+
+		query2 = urllib2.quote(self.query.get())
+		
+		request = urllib2.Request(self.queryurl%query2, None, {'Referer': 'http://www.github.com/gibbonorbiter'})
+		response = urllib2.urlopen(request)
+
+		results = json.load(response)
+		responseData = results['responseData']['results']
+		if len(responseData)==0:
+			print results
+			return
+
+		newimgurl = results['responseData']['results'][0]['url']
+		buff = StringIO()
+		buff.write(urllib2.urlopen(newimgurl).read())
+		buff.seek(0)
+		self.img = np.array(Image.open(buff))
+
+		self.refreshimg()
+		# with open('tmp', 'wb') as f:
+		# 	f.write(urllib2.urlopen(newimgurl).read())
+
+		self.imgurl.set(newimgurl)
 
 
+	def fish(self):
+
+		def fisheye(xy):
+			center = np.mean(xy, axis=0)
+			xc, yc = (xy - center).T
+
+			# Polar coordinates
+			r = np.sqrt(xc**2 + yc**2)
+			theta = np.arctan2(yc, xc)
+
+			r = 0.87 * np.exp(r**(1/2.5) / 1.75)
+
+			return np.column_stack(( \
+				r * np.cos(theta), r * np.sin(theta)
+				)) + center
+
+		self.img = transform.warp(self.img, fisheye)
+		self.refreshimg()
+
+	def flip(self):
+		self.img = self.img[::-1, ...]
+		self.refreshimg()
+
+	def blur(self):
+		pass
+
+	def refreshimg(self):
+		if len(self.img.shape)==2:
+			self.ax.imshow(self.img, cmap='gray')
+		else:
+			self.ax.imshow(self.img)
+		self.fig.canvas.draw()
+
+
+	def destroy(self):
+		self.root.quit()
+		self.root.destroy()
+
+
+gui = imageManip()
+gui.root.mainloop()
