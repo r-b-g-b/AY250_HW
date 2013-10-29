@@ -1,50 +1,76 @@
-try:
-    from enthought.traits.api import HasTraits, Str, \
-            Int, Float, Enum, DelegatesTo, This, Instance, \
-            Button
-    from enthought.traits.ui.api import View, Item, Group
-except:
-    from traits.api import HasTraits, Str, \
-            Int, Float, Enum, DelegatesTo, This, Instance, \
-            Button
-    from traitsui.api import View, Item, Group
-
-
+import matplotlib
+matplotlib.use('TkAgg')
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2TkAgg
+from Tkinter import *
+import Image, ImageTk
 import urllib2
 import json
 
-class ImageManip(HasTraits):
+
+def submitQuery():
+	'''
+	Sets imgurl to the first result of a Google image search for the string
+	stored in query
+	'''
+
+	query2 = urllib2.quote(query.get())
+	queryurl = 'https://ajax.googleapis.com/ajax/services/search/images?v=1.0&q=%s'
+	request = urllib2.Request(queryurl%query2, None, {'Referer': 'http://www.github.com/gibbonorbiter'})
+	response = urllib2.urlopen(request)
+
+	results = json.load(response)
+	responseData = results['responseData']['results']
+	if len(responseData)==0:
+		print results
+		return
+
+	newimgurl = results['responseData']['results'][0]['url']
+	buff = StringIO()
+	buff.write(urllib2.urlopen(newimgurl).read())
+	buff.seek(0)
+	im = Image.open(buff).
+
+	with open('tmp', 'wb') as f:
+		f.write(urllib2.urlopen(newimgurl).read())
+
+	imgurl.set(newimgurl)
+
+
+root = Tk()
+root.wm_title("Image search")
 	
-	query = Str('')
-	submit = Button('Submit')
-
-	imgurl = Str('')
-	
-	imgdisplay = None
-
-	manips = ['Refresh', 'Blur', 'Sharpen']
-
-	def _submit_fired(self):
-		'''
-		Sets self.imgurl to the first result of a Google image search for the string
-		stored in self.query
-		'''
-
-		queryurl = 'https://ajax.googleapis.com/ajax/services/search/images?v=1.0&q=%s'
-		request = urllib2.Request(queryurl%self.query, None, {'Referer': 'http://www.github.com/gibbonorbiter'})
-		response = urllib2.urlopen(request)
-
-		results = json.load(response)
-		self.imgurl = results['responseData']['results'][0]['url']
-
-		imgresult = results['responseData']['results'][0]
-		height,  width = int(imgresult['height']), int(imgresult['width'])
-		# imgraw = requests.get(imgurl).content
-		img = Image.fromstring('RGB', (height, width), imgraw)
+# fig = Figure(figsize=(5,4), dpi=100)
+# ax = fig.add_subplot(111)
 
 
-	view = View('query', Item('submit', show_label=False), 'imgurl', buttons=['Cancel', 'OK'])
+canvas = FigureCanvasTkAgg(fig, master=root)
+canvas.show()
 
+# add text fields
+query = StringVar(root)
+query.set('...Enter search query...')
+querylabel = Entry(root, textvariable=query)
 
-gui = ImageManip(query='')
-gui.configure_traits()
+imgurl = StringVar(root)
+imgurl.set("...Image URL...")
+imgurllabel = Label(root, textvariable=imgurl)
+
+submit = Button(root, text="Submit", command=submitQuery)
+
+img = Image.open('tmp')
+tkimg = ImageTk.PhotoImage(img)
+imglabel = Label(root, image=tkimg)
+
+querylabel.pack(side=TOP)
+submit.pack(side=TOP)
+imgurllabel.pack(side=TOP)
+canvas.get_tk_widget().pack(side=LEFT, expand=1)
+canvas._tkcanvas.pack(side=TOP, fill=BOTH, expand=1)
+
+# manips.pack(side=BOTTOM)
+
+manips = ['Refresh', 'Blur', 'Sharpen']
+
+root.mainloop()
+
