@@ -52,6 +52,7 @@ class imageManip(object):
 
 		# add manipulation buttons
 		blurbutton = Button(self.root, text='Blur', command=self.blur)
+		sharpbutton = Button(self.root, text='Sharp', command=self.sharp)
 		flipbutton = Button(self.root, text='Flip', command=self.flip)
 		fishbutton = Button(self.root, text='Fish', command=self.fish)
 
@@ -62,6 +63,7 @@ class imageManip(object):
 		canvas.get_tk_widget().pack(side=LEFT, expand=1)
 		canvas._tkcanvas.pack(side=TOP, fill=BOTH, expand=1)
 		blurbutton.pack(side=LEFT)
+		sharpbutton.pack(side=LEFT)
 		flipbutton.pack(side=LEFT)
 		fishbutton.pack(side=LEFT)
 		quit.pack(side=RIGHT)
@@ -108,10 +110,22 @@ class imageManip(object):
 			for i in xrange(self.img.shape[-1]):
 				self.img[..., i] = sig.convolve2d(self.img[..., i], wind, 'same')
 		else:
-			self.img = sig.convolve2d(self.img, np.ones((10, 10)), 'same')
+			self.img = sig.convolve2d(self.img, wind, 'same')
 
 		self.refreshimg()
 
+	def sharp(self):
+		'''
+		implements a simple sharpening function
+		'''
+		wind = np.array([[0,-1,0], [-1,5,-1], [0,-1,0]], dtype=float)
+		if len(self.img.shape)>2:
+			for i in xrange(self.img.shape[-1]):
+				self.img[..., i] = sig.convolve2d(self.img[..., i], wind, 'same')
+		else:
+			self.img = sig.convolve2d(self.img, wind, 'same')
+
+		self.refreshimg()
 
 	def fish(self):
 		'''
