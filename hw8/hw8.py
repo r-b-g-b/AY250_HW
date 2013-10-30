@@ -7,7 +7,7 @@ from matplotlib import pyplot as plt
 from Tkinter import *
 
 import Image
-from skimage import transform, filter
+from skimage import transform, filter, exposure
 from scipy import signal as sig
 from StringIO import StringIO
 import numpy as np
@@ -52,8 +52,10 @@ class imageManip(object):
 
 		# add manipulation buttons
 		blurbutton = Button(self.root, text='Blur', command=self.blur)
-		sharpbutton = Button(self.root, text='Sharp', command=self.sharp)
+		edgebutton = Button(self.root, text='Edge', command=self.edge)
+		eqbutton = Button(self.root, text='EQ', command=self.eq)
 		flipbutton = Button(self.root, text='Flip', command=self.flip)
+		swirlbutton = Button(self.root, text='Swirl', command=self.swirl)
 		fishbutton = Button(self.root, text='Fish', command=self.fish)
 
 		# pack everything
@@ -63,8 +65,10 @@ class imageManip(object):
 		canvas.get_tk_widget().pack(side=LEFT, expand=1)
 		canvas._tkcanvas.pack(side=TOP, fill=BOTH, expand=1)
 		blurbutton.pack(side=LEFT)
-		sharpbutton.pack(side=LEFT)
+		edgebutton.pack(side=LEFT)
+		eqbutton.pack(side=LEFT)
 		flipbutton.pack(side=LEFT)
+		swirlbutton.pack(side=LEFT)
 		fishbutton.pack(side=LEFT)
 		quit.pack(side=RIGHT)
 		# manips.pack(side=BOTTOM)
@@ -84,7 +88,7 @@ class imageManip(object):
 		results = json.load(response)
 		responseData = results['responseData']['results']
 		if len(responseData)==0:
-			print results
+			print "No images found"
 			return
 
 		newimgurl = results['responseData']['results'][0]['url']
@@ -114,16 +118,28 @@ class imageManip(object):
 
 		self.refreshimg()
 
-	def sharp(self):
+	def edge(self):
 		'''
-		implements a simple sharpening function
+		implements a edge detection
 		'''
-		wind = np.array([[0,-1,0], [-1,5,-1], [0,-1,0]], dtype=float)
-		if len(self.img.shape)>2:
-			for i in xrange(self.img.shape[-1]):
-				self.img[..., i] = sig.convolve2d(self.img[..., i], wind, 'same')
-		else:
-			self.img = sig.convolve2d(self.img, wind, 'same')
+
+		self.img = self.img.mean(2)
+		self.img = filter.sobel(self.img)
+
+		self.refreshimg()
+
+	def eq(self):
+		'''
+		performs image equalization based on skimage's algorithm
+		'''
+		self.img = exposure.equalize(self.img)
+		self.refreshimg()
+
+	def swirl(self):
+		'''
+		implements skimage's swirl function
+		'''
+		self.img = transform.swirl(self.img, rotation=0, strength=10, radius=1000, order=2)
 
 		self.refreshimg()
 
