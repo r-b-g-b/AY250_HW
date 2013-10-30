@@ -116,6 +116,7 @@ class imageManip(object):
 	def fish(self):
 		'''
 		expands the image to produce a fisheye effect
+		code adapted from skimage demo
 		'''
 		def fisheye(xy):
 			center = np.mean(xy, axis=0)
@@ -150,7 +151,6 @@ class imageManip(object):
 		else:
 			self.ax.imshow(self.img)
 		self.fig.canvas.draw()
-
 
 	def destroy(self):
 		'''
