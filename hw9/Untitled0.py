@@ -4,14 +4,41 @@ import time
 import numpy as np
 import pandas as pd
 import subprocess
+from matplotlib import pyplot as plt
 
+# ### Run IPython parallel
+def run_ipython_parallel(engines, nthrows):
+    tic = time.time()
+    pi_est = eall.apply_sync(throw, nthrows/nengines)
+    toc = time.time()
+    time_elapsed = toc-tic
+    pi_est = 4. * float(sum(pi_est)) / nthrows
+    return time_elapsed
+
+# ### Run serial
+def run_serial(nthrows):
+    tic = time.time()
+    throw(nthrows)
+    toc = time.time()
+    time_elapsed = toc-tic
+    return time_elapsed
+
+# ### Throw n darts
+def throw(n):
+    from random import uniform
+    nhits = 0
+    for i in xrange(n):
+        if sum([uniform(0, 1)**2, uniform(0, 1)**2])<1:
+            nhits += 1
+    return nhits
+
+# Start cluster
+subprocess.call(['ipcluster', 'start'])
 engines = Client()
 nengines = len(engines)
 
-n_exps = range(2, 6) # 10**n
+n_exps = range(2, 6) # nthrows = 10**n_exp
 print n_exps
-
-# ### Run IPython parallel
 
 df = pd.DataFrame(columns = ['type', 'time', 'nthrows'])
 for n_exp in n_exps:
@@ -38,37 +65,5 @@ np.log10(time_means).plot(marker='.', ax=ax);
 ax.set_xlabel('log10( N throws )');
 ax.set_ylabel('log10( duration )');
 
-%matplotlib inline
-from matplotlib import pyplot as plt
-fig, ax = plt.subplots()
-# ax.semilogy(ns, time_means, yerr=time_errs)
-ax.errorbar(ns, np.log10(time_means), yerr=time_errs);
-
 # ### Call engines using "apply_sync" and passing nthrows/nengines
 
-def run_ipython_parallel(engines, nthrows):
-    tic = time.time()
-    pi_est = eall.apply_sync(throw, nthrows/nengines)
-    toc = time.time()
-    time_elapsed = toc-tic
-    pi_est = 4. * float(sum(pi_est)) / nthrows
-    return time_elapsed
-
-# ### Run serial
-
-def run_serial(nthrows):
-    tic = time.time()
-    throw(nthrows)
-    toc = time.time()
-    time_elapsed = toc-tic
-    return time_elapsed
-
-# ### Throw n darts
-
-def throw(n):
-    from random import uniform
-    nhits = 0
-    for i in xrange(n):
-        if sum([uniform(0, 1)**2, uniform(0, 1)**2])<1:
-            nhits += 1
-    return nhits
