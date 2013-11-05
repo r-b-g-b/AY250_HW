@@ -3,11 +3,14 @@ import multiprocessing
 import time
 import numpy as np
 import pandas as pd
-
+import sys
 # import subprocess
 
 # ### Run IPython parallel
 def run_ipython_parallel(engines, nthrows):
+    '''
+    Runs nthrows on the IPython cluster engines and returns the run duration
+    '''
     tic = time.time()
     pi_est = engines.apply_sync(throw, nthrows/len(engines))
     toc = time.time()
@@ -17,6 +20,9 @@ def run_ipython_parallel(engines, nthrows):
 
 # ### Run multiprocessing parallel
 def run_multiproc_parallel(pool, nthrows):
+    '''
+    Runs nthrows in the multiprocessing pool and returns the run duration
+    '''
     tic = time.time()
     ncpus = multiprocessing.cpu_count()
     pi_est = pool.map(throw, [nthrows/ncpus]*ncpus)
@@ -27,6 +33,9 @@ def run_multiproc_parallel(pool, nthrows):
 
 # ### Run serial
 def run_serial(nthrows):
+    '''
+    Runs nthrows serially and returns the run duration
+    '''
     tic = time.time()
     throw(nthrows)
     toc = time.time()
@@ -35,6 +44,12 @@ def run_serial(nthrows):
 
 # ### Throw n darts
 def throw(n):
+    '''
+    Performs a Monte Carlo approximation of pi
+    Throws n darts into a unit square (i.e. uniformly samples the square)
+    and sums the number of darts that land in a circle with unit radius
+    centered at the lower left
+    '''
     from random import uniform
     nhits = 0
     for i in xrange(n):
@@ -42,63 +57,128 @@ def throw(n):
             nhits += 1
     return nhits
 
-# subprocess.call(['ipcluster', 'start'])
-# start IPython engines
-rc = Client()
-engines = rc[:]
-nengines = len(engines)
-print 'Using %u processors.' % nengines
+def errorfill(x, y, yerr, ax = None, color = None, **kwargs):
+    '''
+    Given the x, y, and y errors, constructs a plot of those values
+    '''
 
-# start multiprocessing pool
-pool = multiprocessing.Pool()
+    if ax is None: fig, ax = plt.subplots()
 
-n_exps = range(2, 6) # 10**n
+    if color is None:
+        color = ax._get_lines.color_cycle.next()
 
-# ### Run serial, IPython parallel, and multiprocessing parallel
-df = pd.DataFrame(columns = ['type', 'time', 'nthrows'])
-for n_exp in n_exps:
-    n = 10**n_exp
-    n -= n%nengines # make sure the nthrows is a multiple of nengines
-    for i in range(3):
-        
-        # run serial
-        time_elapsed = run_serial(n)
-        df = df.append(dict(type='serial', time=time_elapsed, nthrows=n_exp), ignore_index=True)
-        
-        # run IPython parallel
-        time_elapsed = run_ipython_parallel(engines, n)
-        df = df.append(dict(type='parallel_ipython', time=time_elapsed, nthrows=n_exp), ignore_index=True)
-        
-        # run multiprocessing parallel
-        time_elapsed= run_multiproc_parallel(pool, n)
-        df = df.append(dict(type='parallel_multiproc', time=time_elapsed, nthrows=n_exp), ignore_index=True)
+    x_hi = y + yerr
+    x_lo = y - yerr
+    l = ax.plot(x, y, color = color, **kwargs)
+    l_up = ax.plot(x, y+yerr, color = color, alpha = 0.2)
+    l_lo = ax.plot(x, y-yerr, color = color, alpha = 0.2)
+    ax.fill_between(x, x_hi, x_lo, alpha = 0.2, color = color)
+    
+    return ax
 
-# subprocess.call(['ipcluster', 'stop'])
+def run(n_exps, engines, pool):
+    '''
+    Run serial, IPython parallel, and multiprocessing parallel
+    '''
+    nengines = len(engines)
+    df = pd.DataFrame(columns = ['type', 'time', 'nthrows'])
+    for n_exp in n_exps:
+        n = 10**n_exp
+        n -= n%nengines # make sure the nthrows is a multiple of nengines
+        for i in range(3):
+            
+            # run serial
+            time_elapsed = run_serial(n)
+            df = df.append(dict(type='serial', time=time_elapsed, nthrows=n_exp), ignore_index=True)
+            
+            # run IPython parallel
+            time_elapsed = run_ipython_parallel(engines, n)
+            df = df.append(dict(type='parallel_ipython', time=time_elapsed, nthrows=n_exp), ignore_index=True)
+            
+            # run multiprocessing parallel
+            time_elapsed= run_multiproc_parallel(pool, n)
+            df = df.append(dict(type='parallel_multiproc', time=time_elapsed, nthrows=n_exp), ignore_index=True)
 
-df['simrate'] = 10**df.nthrows / df.time
-gp = df.groupby(('type', 'nthrows'))
+    return df
 
-time_means = gp.time.apply(np.mean).unstack('type')
-time_errs = gp.time.apply(np.std).unstack('type')
-simrate_means = gp.simrate.apply(np.mean).unstack('type')
-simrate_errs = gp.simrate.apply(np.std).unstack('type')
-print df.head()
-print time_means
-print time_errs
-print simrate_means
-print simrate_errs
+def analyze(df):
+    '''
+    Takes a DataFrame containing timing data from all the runs.
+    Calculates the simulation rate ("simrate") as the number of throws
+    divided by the time to complete.
 
-# ### Plot
-from matplotlib import pyplot as plt
-fig, ax1 = plt.subplots()
-ax2 = plt.twinx(ax1)
-keys = ['serial', 'parallel_ipython', 'parallel_multiproc']
-for key in keys:
-    ax1.errorbar(n_exps, np.log10(time_means[key].values), \
-        yerr=np.log10(time_errs[key].values), marker='.', label=key);
-    ax2.errorbar(n_exps, np.log10(simrate_means[key].values), \
-        yerr=np.log10(simrate_errs[key].values), ls='--', marker='.');
-ax1.legend(loc='best');
-fig.savefig('performance.png')
-plt.draw();
-plt.show();
+    Also calcualtes the mean times and rates for type (serial, ipython,
+    multiprocessing) and number of throws
+
+    Returns the time means, time errors and simrate means
+    '''
+    # calculate simulation rate
+    df['simrate'] = 10**df.nthrows / df.time
+    
+    # calculate means
+    gp = df.groupby(('type', 'nthrows'))
+    time_means = gp.time.apply(np.mean).unstack('type')
+    time_errs = gp.time.apply(np.std).unstack('type')
+    simrate_means = gp.simrate.apply(np.mean).unstack('type')
+
+    return time_means, time_errs, simrate_means
+
+def plot_results(n_exps, time_means, time_errs, simrate_means):
+    '''
+    Plots the mean times, mean simulation rates.
+    Outputs the figure to a file "performance.png" in the current directory
+    '''
+    ### Plot
+    from matplotlib import pyplot as plt
+    fig = plt.figure()
+    ax1 = fig.add_axes([0.125, 0.1, 0.8, 0.75])
+    ax2 = plt.twinx(ax1)
+    keys = ['serial', 'parallel_ipython', 'parallel_multiproc']
+    for key in keys:
+        errorfill(n_exps, time_means[key].values, \
+            yerr=time_errs[key].values, marker='.', label=key+': time', ax=ax1);
+        ax2.plot(n_exps, simrate_means[key].values, \
+            ls='--', marker='.', label=key+': throw rate');
+
+    [a.set_yscale('log', nonposy='clip') for a in (ax1, ax2)]
+    [a.set_xlim([min(n_exps), max(n_exps)]) for a in (ax1, ax2)]
+    [ax1.set_xticks(n_exps)]
+
+    # combine legends
+    lines1, labels1 = ax1.get_legend_handles_labels()
+    lines2, labels2 = ax2.get_legend_handles_labels()
+    ax2.legend(lines1 + lines2, labels1 + labels2, loc='lower right', fontsize=10)
+
+    # add text labels
+    ax1.set_ylabel('Time (s)')
+    ax2.set_ylabel('Throw rate (throws/s)')
+    ax1.set_xlabel('$N^{10}$ throws')
+    title = 'Performance comparison\nSerial vs IPython/multiprocessing parallel'
+    machine_descr = 'Unspecified computer'
+    ax1.set_title('%s\n(%s)' % (title, machine_descr))
+
+    # save figure
+    fig.savefig('performance.png')
+    plt.close();
+
+if __name__=='__main__':
+    
+    # start IPython engines
+    try:
+        rc = Client()
+    except IOError:
+        print 'Please start an IPython cluster by entering\n\t>> ipcluster start\nin the terminal.'
+        sys.exit(1)
+
+    engines = rc[:]
+    nengines = len(engines)
+    print 'Using %u processors.' % nengines
+
+    # start multiprocessing pool
+    pool = multiprocessing.Pool()
+
+    n_exps = range(2, 8) # 10**n
+    df = run(n_exps, engines, pool)
+
+    time_means, time_errs, simrate_means = analyze(df)
+    plot_results(n_exps, time_means, time_errs, simrate_means)
