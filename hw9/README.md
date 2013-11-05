@@ -16,7 +16,7 @@ First, you should initiate an IPython cluster by entering the following code int
 When the cluster has intialized, you can run the code by entering the following into a separate terminal window.
 > python hw9.py
 
-The code finished in under 1 minute on my MacBook Pro.
+The code finished in about 2 minutes on my MacBook Pro.
 
 
 ![Performance plot](performance_RG.png "Performance")

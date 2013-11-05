@@ -178,7 +178,7 @@ if __name__=='__main__':
     # start multiprocessing pool
     pool = multiprocessing.Pool()
 
-    ns = 10**np.arange(2, 5)
+    ns = 10**np.arange(2, 8)
     df = run(ns, engines, pool)
 
     time_means, time_errs, simrate_means = analyze(df)
