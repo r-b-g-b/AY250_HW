@@ -89,15 +89,15 @@ def run(ns, engines, pool):
             
             # run serial
             time_elapsed = run_serial(n)
-            df = df.append(dict(type='serial', time=time_elapsed, nthrows=n_exp), ignore_index=True)
+            df = df.append(dict(type='serial', time=time_elapsed, nthrows=n), ignore_index=True)
             
             # run IPython parallel
             time_elapsed = run_ipython_parallel(engines, n)
-            df = df.append(dict(type='parallel_ipython', time=time_elapsed, nthrows=n_exp), ignore_index=True)
+            df = df.append(dict(type='parallel_ipython', time=time_elapsed, nthrows=n), ignore_index=True)
             
             # run multiprocessing parallel
             time_elapsed= run_multiproc_parallel(pool, n)
-            df = df.append(dict(type='parallel_multiproc', time=time_elapsed, nthrows=n_exp), ignore_index=True)
+            df = df.append(dict(type='parallel_multiproc', time=time_elapsed, nthrows=n), ignore_index=True)
 
     return df
 
@@ -113,7 +113,7 @@ def analyze(df):
     Returns the time means, time errors and simrate means
     '''
     # calculate simulation rate
-    df['simrate'] = 10**df.nthrows / df.time
+    df['simrate'] = df.nthrows / df.time
     
     # calculate means
     gp = df.groupby(('type', 'nthrows'))
@@ -141,7 +141,7 @@ def plot_results(ns, time_means, time_errs, simrate_means):
             ls='--', marker='.', label=key+': throw rate');
 
     [a.set_xscale('log') for a in (ax1, ax2)]
-    [a.set_yscale('log', nonposy='clip') for a in (ax1, ax2)]
+    [a.set_yscale('log') for a in (ax1, ax2)]
     [a.set_xlim([min(ns), max(ns)]) for a in (ax1, ax2)]
     [ax1.set_xticks(ns)]
 
@@ -178,7 +178,7 @@ if __name__=='__main__':
     # start multiprocessing pool
     pool = multiprocessing.Pool()
 
-    ns = 10**np.range(2, 5)
+    ns = 10**np.arange(2, 5)
     df = run(ns, engines, pool)
 
     time_means, time_errs, simrate_means = analyze(df)
