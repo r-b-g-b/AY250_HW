@@ -150,7 +150,7 @@ def plot_results(ns, time_means, time_errs, simrate_means):
     ax2.set_ylabel('Throw rate (throws/s)')
     ax1.set_xlabel('N throws')
     title = 'Performance comparison\nSerial vs IPython/multiprocessing parallel'
-    machine_descr = 'Unspecified computer'
+    machine_descr = 'Computer: MacBook Pro,\nProcessor: 2.4GHz Intel Core 2 Duo,\nMemory: 4GB, 1067MHz DDR3'
     ax1.set_title('%s\n(%s)' % (title, machine_descr))
 
     # save figure
