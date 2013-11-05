@@ -76,15 +76,15 @@ def errorfill(x, y, yerr, ax = None, color = None, **kwargs):
     
     return ax
 
-def run(n_exps, engines, pool):
+def run(ns, engines, pool):
     '''
     Run serial, IPython parallel, and multiprocessing parallel
     '''
     nengines = len(engines)
     df = pd.DataFrame(columns = ['type', 'time', 'nthrows'])
-    for n_exp in n_exps:
-        n = 10**n_exp
+    for n in ns:
         n -= n%nengines # make sure the nthrows is a multiple of nengines
+        print 'Running %u throws' % n
         for i in range(3):
             
             # run serial
@@ -123,7 +123,7 @@ def analyze(df):
 
     return time_means, time_errs, simrate_means
 
-def plot_results(n_exps, time_means, time_errs, simrate_means):
+def plot_results(ns, time_means, time_errs, simrate_means):
     '''
     Plots the mean times, mean simulation rates.
     Outputs the figure to a file "performance.png" in the current directory
@@ -135,14 +135,15 @@ def plot_results(n_exps, time_means, time_errs, simrate_means):
     ax2 = plt.twinx(ax1)
     keys = ['serial', 'parallel_ipython', 'parallel_multiproc']
     for key in keys:
-        errorfill(n_exps, time_means[key].values, \
+        errorfill(ns, time_means[key].values, \
             yerr=time_errs[key].values, marker='.', label=key+': time', ax=ax1);
-        ax2.plot(n_exps, simrate_means[key].values, \
+        ax2.plot(ns, simrate_means[key].values, \
             ls='--', marker='.', label=key+': throw rate');
 
+    [a.set_xscale('log') for a in (ax1, ax2)]
     [a.set_yscale('log', nonposy='clip') for a in (ax1, ax2)]
-    [a.set_xlim([min(n_exps), max(n_exps)]) for a in (ax1, ax2)]
-    [ax1.set_xticks(n_exps)]
+    [a.set_xlim([min(ns), max(ns)]) for a in (ax1, ax2)]
+    [ax1.set_xticks(ns)]
 
     # combine legends
     lines1, labels1 = ax1.get_legend_handles_labels()
@@ -152,7 +153,7 @@ def plot_results(n_exps, time_means, time_errs, simrate_means):
     # add text labels
     ax1.set_ylabel('Time (s)')
     ax2.set_ylabel('Throw rate (throws/s)')
-    ax1.set_xlabel('$N^{10}$ throws')
+    ax1.set_xlabel('N throws')
     title = 'Performance comparison\nSerial vs IPython/multiprocessing parallel'
     machine_descr = 'Unspecified computer'
     ax1.set_title('%s\n(%s)' % (title, machine_descr))
@@ -177,8 +178,8 @@ if __name__=='__main__':
     # start multiprocessing pool
     pool = multiprocessing.Pool()
 
-    n_exps = range(2, 8) # 10**n
-    df = run(n_exps, engines, pool)
+    ns = 10**np.range(2, 5)
+    df = run(ns, engines, pool)
 
     time_means, time_errs, simrate_means = analyze(df)
-    plot_results(n_exps, time_means, time_errs, simrate_means)
+    plot_results(ns, time_means, time_errs, simrate_means)
