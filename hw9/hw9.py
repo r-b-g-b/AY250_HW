@@ -4,9 +4,7 @@ import time
 import numpy as np
 import pandas as pd
 import sys
-# import subprocess
 
-# ### Run IPython parallel
 def run_ipython_parallel(engines, nthrows):
     '''
     Runs nthrows on the IPython cluster engines and returns the run duration
@@ -18,7 +16,6 @@ def run_ipython_parallel(engines, nthrows):
     pi_est = 4. * float(sum(pi_est)) / nthrows
     return time_elapsed
 
-# ### Run multiprocessing parallel
 def run_multiproc_parallel(pool, nthrows):
     '''
     Runs nthrows in the multiprocessing pool and returns the run duration
@@ -31,7 +28,6 @@ def run_multiproc_parallel(pool, nthrows):
     pi_est = 4. * float(sum(pi_est)) / nthrows
     return time_elapsed
 
-# ### Run serial
 def run_serial(nthrows):
     '''
     Runs nthrows serially and returns the run duration
@@ -42,7 +38,6 @@ def run_serial(nthrows):
     time_elapsed = toc-tic
     return time_elapsed
 
-# ### Throw n darts
 def throw(n):
     '''
     Performs a Monte Carlo approximation of pi
