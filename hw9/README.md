@@ -17,4 +17,6 @@ When the cluster has intialized, you can run the code by entering the following 
 > python hw9.py
 
 The code finished in under 1 minute on my MacBook Pro.
+
+
 ![Performance plot](performance_RG.png "Performance")
