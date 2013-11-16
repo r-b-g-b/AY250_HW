@@ -10,7 +10,7 @@ Run a MCMC to simulate many samples for each player. Characterize the resulting 
 The simplest way to run/visualize the data is to simply load the IPython notebook, hw11.ipynb. From the terminal, navigate to the directory /hw11 and run
 > ipython notebook
 
-Select "hw11" from the notebook list and advance through using 'Shift+Enter'
+Select "hw11" from the notebook list and advance through using `Shift+Enter`
 
 ### .py python script
 If you'd like to run it as a .py python script, you should start up IPython from the terminal by typing
